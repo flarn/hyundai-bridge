@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HyundaiBridge/HyundaiBridge.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HyundaiBridge.Tests/HyundaiBridge.Tests.csproj" />
+  </Folder>
+</Solution>

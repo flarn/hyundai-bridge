@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/TestResults/
+.env
+.env.*
+!.env.example
+data/
+*.user
+__pycache__/
+.pytest_cache/
+.venv/
