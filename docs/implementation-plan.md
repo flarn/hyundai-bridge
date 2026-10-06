@@ -12,7 +12,9 @@ Only the adapter understands CCI/GSPA, tokens, stamps, PINs and backend DTOs. HA
 
 Planned MQTT topics are `hyundai/v1/{vehicleId}/state`, `/availability`, `/command/{action}` and `/command-result`, plus bridge availability/retained vehicle metadata for config flow. Commands are non-retained and carry a command id; serialize per vehicle, reject malformed or retained controls and deduplicate QoS redelivery. Command results materially improve correctness because Hyundai acceptance is asynchronous. Retained state must be republished after MQTT reconnect; use an offline Last Will.
 
-The exact metadata/capability/availability schemas are finalized and contract-tested in phase 4 before HA implementation. Unsupported fields stay null. Do not embed raw Hyundai field names, endpoint names or errors. Version-breaking changes require a new topic version.
+The metadata/capability/availability schemas are now documented in [MQTT v1](mqtt-v1.md) and tested by the HA consumer. Unsupported fields stay null. Do not embed raw Hyundai field names, endpoint names or errors. Version-breaking changes require a new topic version.
+
+On 2026-10-06 the user confirmed the vehicle is not linked yet and explicitly requested continuing from the Home Assistant side. Phase 5 therefore precedes real state/command implementation. Synthetic contract fixtures verify the HA boundary; they do not replace the vehicle acceptance checks in phases 3/6.
 
 ## Phases
 
@@ -21,8 +23,8 @@ The exact metadata/capability/availability schemas are finalized and contract-te
 | 1 | Current EU API note and plan | Source inspected at pinned commits; documented unknowns. Done. |
 | 2 | CCI password login, session persistence/refresh, normalized discovery | Live EU login, restart/session reuse and token renewal verified. Discovery returns zero vehicles; linked VIN/model acceptance remains pending. |
 | 3 | GSPA cryptography and cached normalized state | Read real data, verify units/null/sentinel mapping and vehicle/bridge timestamps. Not started. |
-| 4 | MQTT state/metadata/availability transport | Real broker confirms versioned retained JSON, reconnect and Last Will. Not started. |
-| 5 | Config Flow and native HA platforms | Reuse HA MQTT connection; stable VIN-based device/entity ids. One device per vehicle via bridge. Test against HA core and inspect standard Tile cards. Not started. |
+| 4 | MQTT state/metadata/availability transport | v1 schema/fixtures and real Mosquitto HA-consumer bootstrap/reload verified. .NET publisher/Last Will implementation pending. |
+| 5 | Config Flow and native HA platforms | Implemented and tested in HA 2026.9.4: custom manifest discovery, native entities, VIN identity, per-vehicle capabilities, availability and services. No production deployment or visual Tile-card inspection. |
 | 6 | Refresh, lock, unlock, climate start/stop, charge start/stop, limits | Implement and verify each operation against the actual API before the next. Separate acceptance, completion and refreshed observation. Not started. |
 | 7 | Polling, cooldowns, outage cache, Docker, logging, final tests | Restart/token rotation/broker outage/API outage/rate-limit tests and real container verification. Not started. |
 
@@ -34,13 +36,13 @@ Bridge connectivity, API reachability and vehicle timestamp freshness remain dis
 
 ## Next required evidence
 
-Make a linked Hyundai vehicle available to the account. If it is already visible in the official MyHyundai app, investigate the discovery response before assuming it is unlinked. Re-run `--discover` and verify VIN/model before proceeding to phase 3. Credentials are supplied per process; session tokens are stored outside the checkout. Never commit raw tokens or VIN/location fixtures from a real account without sanitizing them.
+Once a vehicle is linked, re-run `--discover` and verify VIN/model before implementing phase 3. Continue the .NET producer against the established contract; advertise only capabilities backed by actual adapter implementation and evidence. Credentials are supplied per process; session tokens are stored outside the checkout. Never commit raw tokens or VIN/location fixtures from a real account without sanitizing them.
 
 ## Local verification — 2026-10-06
 
 Release test suite: 34 passing cases covering protocol-level RSA password encryption, token expiry/rotation, restart reuse, serialized refresh, bounded 401 handling, no password retries on outage/403/429, rate-limit metadata, changed authentication schemas, normalized multi-model discovery, private file modes and atomic/cancelled session writes. The additional regression case follows the observed Hyundai identity redirect. CLI configuration failure was checked separately: exit 2, no vehicle JSON on stdout and structured JSON error on stderr.
 
-These are synthetic transport tests and local filesystem/CLI checks. No Hyundai vehicle, MQTT broker, HA runtime or Docker deployment has been verified.
+These phase 2 checks are synthetic transport tests and local filesystem/CLI checks. They did not verify a Hyundai vehicle, MQTT broker, HA runtime or Docker deployment. The subsequent HA verification is recorded below.
 
 ## Live verification — 2026-10-06
 
@@ -49,3 +51,9 @@ The first authorize request redirected to the Hyundai web identity host on port 
 After correction, the supplied EU account authenticated successfully. Discovery returned a valid empty vehicle list (exit 4). A second process reused the saved session and returned the same empty list without authenticating again. A controlled renewal test marked the local session cache expired; the real CCI refresh endpoint returned renewed credentials, which the bridge persisted before discovery. Discovery still returned zero vehicles. Session directory/file modes were verified as 0700/0600; no password, account identifier or token is recorded in this evidence.
 
 Authentication/session lifecycle is now live verified. The phase 2 linked-vehicle acceptance gate remains pending. Token renewal was exercised deliberately, not after natural token expiry, and no vehicle was woken or remotely controlled.
+
+## HA consumer verification — 2026-10-06
+
+The HA 2026.9.4 test runtime loads all seven native platforms. **50 cases pass**, including the real broker test. Tests cover 15 entities for a synthetic EV, one vehicle device via the bridge, another model with limited capabilities, registry customization after reload, nullable/invalid observations, API outage versus bridge/broker loss, Config Flow and native service commands. Accepted responses remain pending, terminal errors propagate, timeouts have unknown outcomes and state changes only with new observations. Ruff lint/format and JSON/diff checks also pass.
+
+A separate test uses actual paho transport and Mosquitto 2.0.22 in a disposable Docker container bound to loopback. It publishes synthetic retained state before HA startup, verifies custom integration discovery from the manifest and native state, reloads the integration/MQTT connection and checks offline/online transitions. This verifies the consumer and transport, not Hyundai API behavior or a deployed HA system. See [HA instructions](home-assistant.md).

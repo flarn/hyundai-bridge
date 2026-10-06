@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "bridgeId": "home",
+  "name": "Hyundai Bridge",
+  "vehicles": [
+    {
+      "vehicleId": "example-ev",
+      "vin": "KMH00000000000001",
+      "name": "Example Hyundai",
+      "model": "Example EV",
+      "capabilities": {
+        "stateFields": ["batteryPercent", "estimatedRangeKm", "odometerKm", "isCharging", "isPluggedIn", "isLocked", "isClimateOn", "targetTemperatureCelsius", "isDefrostOn", "acChargeLimitPercent", "dcChargeLimitPercent", "latitude", "longitude", "outsideTemperatureCelsius", "cabinTemperatureCelsius"],
+        "commands": ["refresh", "lock", "unlock", "climate/start", "climate/stop", "charging/start", "charging/stop", "charge-limit"],
+        "climate": {"minTemperatureCelsius": 17, "maxTemperatureCelsius": 27, "temperatureStepCelsius": 0.5, "supportsDefrost": true},
+        "chargeLimits": {"minPercent": 50, "maxPercent": 100, "stepPercent": 10}
+      }
+    }
+  ]
+}

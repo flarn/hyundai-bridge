@@ -1,0 +1,78 @@
+{
+  "title": "Hyundai Bridge",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anslut Hyundai Bridge",
+        "description": "Integrationen använder Home Assistants befintliga MQTT-anslutning. Ange identifieraren som är konfigurerad för bryggan.",
+        "data": {
+          "bridge_id": "Bryggans identifierare"
+        }
+      },
+      "confirm": {
+        "title": "Anslut Hyundai Bridge",
+        "description": "Anslut till {name}?"
+      }
+    },
+    "error": {
+      "invalid_bridge_id": "Använd bokstäver, siffror, understreck eller bindestreck.",
+      "mqtt_unavailable": "Konfigurera Home Assistants MQTT-integration först.",
+      "bridge_unavailable": "Bryggan har inte publicerat giltig fordonsmetadata. Starta bryggan och försök igen."
+    },
+    "abort": {
+      "already_configured": "Bryggan är redan konfigurerad.",
+      "invalid_manifest": "Bryggan skickade ogiltig metadata eller en version som inte stöds."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": {
+        "name": "Batteri"
+      },
+      "range": {
+        "name": "Räckvidd"
+      },
+      "odometer": {
+        "name": "Mätarställning"
+      },
+      "outside_temperature": {
+        "name": "Utetemperatur"
+      },
+      "cabin_temperature": {
+        "name": "Kupétemperatur"
+      }
+    },
+    "binary_sensor": {
+      "charging": {
+        "name": "Laddar"
+      },
+      "plugged_in": {
+        "name": "Ansluten laddkabel"
+      }
+    },
+    "number": {
+      "ac_charge_limit": {
+        "name": "AC-laddgräns"
+      },
+      "dc_charge_limit": {
+        "name": "DC-laddgräns"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Uppdatera"
+      },
+      "start_charging": {
+        "name": "Starta laddning"
+      },
+      "stop_charging": {
+        "name": "Stoppa laddning"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "name": "Position"
+      }
+    }
+  }
+}

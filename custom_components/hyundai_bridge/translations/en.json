@@ -1,0 +1,78 @@
+{
+  "title": "Hyundai Bridge",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Hyundai Bridge",
+        "description": "The integration uses Home Assistant's existing MQTT connection. Enter the identifier configured for your bridge.",
+        "data": {
+          "bridge_id": "Bridge identifier"
+        }
+      },
+      "confirm": {
+        "title": "Connect Hyundai Bridge",
+        "description": "Connect to {name}?"
+      }
+    },
+    "error": {
+      "invalid_bridge_id": "Use letters, digits, underscore or hyphen for the bridge identifier.",
+      "mqtt_unavailable": "Set up the Home Assistant MQTT integration first.",
+      "bridge_unavailable": "The bridge has not published valid vehicle metadata. Start the bridge and try again."
+    },
+    "abort": {
+      "already_configured": "This bridge is already configured.",
+      "invalid_manifest": "The bridge supplied invalid or unsupported metadata."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": {
+        "name": "Battery"
+      },
+      "range": {
+        "name": "Range"
+      },
+      "odometer": {
+        "name": "Odometer"
+      },
+      "outside_temperature": {
+        "name": "Outside temperature"
+      },
+      "cabin_temperature": {
+        "name": "Cabin temperature"
+      }
+    },
+    "binary_sensor": {
+      "charging": {
+        "name": "Charging"
+      },
+      "plugged_in": {
+        "name": "Plugged in"
+      }
+    },
+    "number": {
+      "ac_charge_limit": {
+        "name": "AC charge limit"
+      },
+      "dc_charge_limit": {
+        "name": "DC charge limit"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Refresh"
+      },
+      "start_charging": {
+        "name": "Start charging"
+      },
+      "stop_charging": {
+        "name": "Stop charging"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "name": "Location"
+      }
+    }
+  }
+}

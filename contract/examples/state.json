@@ -1,0 +1,21 @@
+{
+  "vehicleId": "example-ev",
+  "vin": "KMH00000000000001",
+  "batteryPercent": 73,
+  "estimatedRangeKm": 382,
+  "isCharging": false,
+  "isPluggedIn": true,
+  "isLocked": true,
+  "acChargeLimitPercent": 80,
+  "dcChargeLimitPercent": 90,
+  "isClimateOn": false,
+  "targetTemperatureCelsius": 21,
+  "isDefrostOn": false,
+  "cabinTemperatureCelsius": 20,
+  "outsideTemperatureCelsius": 8,
+  "latitude": 59.4,
+  "longitude": 18.1,
+  "odometerKm": 12345,
+  "vehicleUpdatedAt": "2026-10-06T20:40:00Z",
+  "bridgeUpdatedAt": "2026-10-06T20:42:00Z"
+}
