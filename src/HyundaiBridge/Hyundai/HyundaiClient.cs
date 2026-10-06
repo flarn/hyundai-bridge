@@ -171,7 +171,8 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
                 var location = response.Headers.Location;
                 if (location is null) break;
                 uri = new Uri(uri, location);
-                if (uri.Scheme != "https" || uri.Host is not ("idpconnect-eu.hyundai.com" or "eu-account.hyundai.com"))
+                if (uri.Scheme != "https" || uri.Host is not
+                    ("idpconnect-eu.hyundai.com" or "eu-account.hyundai.com" or "prd.eu-ccapi.hyundai.com"))
                     throw new HyundaiException("Hyundai authorization redirected to an unexpected host.");
                 continue;
             }

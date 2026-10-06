@@ -4,7 +4,7 @@ Hyundai EU / MyHyundai → .NET → versioned MQTT → native Home Assistant cus
 
 Hyundai integration for supported European vehicles generally. Model names, VINs and capabilities come from the backend; IONIQ 9 is one intended verification vehicle.
 
-**Status:** research and a locally tested phase 2 authentication/discovery implementation. Live Hyundai login/discovery has not been verified. State retrieval, MQTT, Home Assistant entities, commands and Docker packaging are subsequent phases, not delivered features.
+**Status:** research and phase 2 authentication/discovery implementation. Live EU login, session reuse after restart and CCI token renewal were verified on 2026-10-06. Discovery returned zero available vehicles, so VIN/model acceptance remains pending. State retrieval, MQTT, Home Assistant entities, commands and Docker packaging are subsequent phases, not delivered features.
 
 See [API research](docs/myhyundai-eu-api.md) and [implementation/verification plan](docs/implementation-plan.md).
 

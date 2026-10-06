@@ -15,7 +15,7 @@ Sources inspected at fixed commits:
 - CCI: `https://cci-api-eu.hyundai.com/domain/api/`
 - GSPA: `https://gspa-ccs-eu.hyundai.com/gspa/v1/`
 
-The OneApp OAuth client is `4f4953b5-02e1-4dbc-8599-87e983ee1be5`; redirect URI `https://oneapp.hyundai.com/redirect`. It is a public app identifier, not a user secret. The older `prd.eu-ccapi.hyundai.com:8080` flow is not the chosen MyHyundai path.
+The OneApp OAuth client is `4f4953b5-02e1-4dbc-8599-87e983ee1be5`; redirect URI `https://oneapp.hyundai.com/redirect`. It is a public app identifier, not a user secret. The vehicle API uses CCI/GSPA. Live inspection on 2026-10-06 shows that the authorize GET still redirects through `https://prd.eu-ccapi.hyundai.com:8080/web/v1/user/authorize`; allow this Hyundai identity page during cookie setup. This does not select the legacy vehicle API.
 
 The inspected [password flow](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/daca6876e98d33815b8c7611fc38f5ec24c8355a/hyundai_kia_connect_api/GspaApiEU.py#L357) establishes IDP cookies through OAuth authorize, retrieves an RSA JWK from `/auth/api/v1/accounts/certs`, and posts `/auth/account/signin` with hex RSA PKCS#1 v1.5 encrypted password and key id. Signin redirects with a code; do not follow or log that credential-bearing redirect. Exchange the code via CCI `POST v1/auth/token?code=...`.
 
@@ -54,4 +54,4 @@ Proposed bridge defaults for phase 3/7: cached reads every ten minutes, no autom
 
 ## Verification boundary
 
-No credentials or linked vehicle were supplied. Swedish login, vehicle discovery, GSPA state, model capabilities, command execution and token refresh are not live verified by this project. All subsequent phases require explicit recorded evidence; synthetic tests must never be presented as physical/API acceptance.
+Live verification on 2026-10-06: the supplied Swedish/EU account authenticated through CCI. A second process reused the persisted session without login. CCI token renewal also succeeded after the local cache expiry was deliberately advanced for a controlled test; this was not a naturally expired-token observation. Both discovery runs and the renewal run returned zero available vehicles. VIN/model, GSPA state, model capabilities and commands remain unverified. All subsequent phases require recorded evidence; synthetic tests must never be presented as physical/API acceptance.

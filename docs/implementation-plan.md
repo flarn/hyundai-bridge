@@ -19,7 +19,7 @@ The exact metadata/capability/availability schemas are finalized and contract-te
 | Phase | Deliverable | Acceptance and current status |
 |---|---|---|
 | 1 | Current EU API note and plan | Source inspected at pinned commits; documented unknowns. Done. |
-| 2 | CCI password login, session persistence/refresh, normalized discovery | Local protocol/expiry/security tests; live account must return linked VIN/model. Local implementation ready; live acceptance pending. |
+| 2 | CCI password login, session persistence/refresh, normalized discovery | Live EU login, restart/session reuse and token renewal verified. Discovery returns zero vehicles; linked VIN/model acceptance remains pending. |
 | 3 | GSPA cryptography and cached normalized state | Read real data, verify units/null/sentinel mapping and vehicle/bridge timestamps. Not started. |
 | 4 | MQTT state/metadata/availability transport | Real broker confirms versioned retained JSON, reconnect and Last Will. Not started. |
 | 5 | Config Flow and native HA platforms | Reuse HA MQTT connection; stable VIN-based device/entity ids. One device per vehicle via bridge. Test against HA core and inspect standard Tile cards. Not started. |
@@ -34,10 +34,18 @@ Bridge connectivity, API reachability and vehicle timestamp freshness remain dis
 
 ## Next required evidence
 
-Configure EU credentials securely and a linked Hyundai vehicle. Run `--discover` twice: the first must return VIN/model, the second must reuse the saved session. Record sanitized outcome only. Then verify refresh after expiry and proceed to phase 3. Never commit raw tokens, VIN/location fixtures from a real account without sanitizing them.
+Make a linked Hyundai vehicle available to the account. If it is already visible in the official MyHyundai app, investigate the discovery response before assuming it is unlinked. Re-run `--discover` and verify VIN/model before proceeding to phase 3. Credentials are supplied per process; session tokens are stored outside the checkout. Never commit raw tokens or VIN/location fixtures from a real account without sanitizing them.
 
 ## Local verification — 2026-10-06
 
-Release test suite: 33 passing cases covering protocol-level RSA password encryption, token expiry/rotation, restart reuse, serialized refresh, bounded 401 handling, no password retries on outage/403/429, rate-limit metadata, changed authentication schemas, normalized multi-model discovery, account isolation, private file modes and atomic/cancelled session writes. CLI configuration failure was checked separately: exit 2, no vehicle JSON on stdout and structured JSON error on stderr.
+Release test suite: 34 passing cases covering protocol-level RSA password encryption, token expiry/rotation, restart reuse, serialized refresh, bounded 401 handling, no password retries on outage/403/429, rate-limit metadata, changed authentication schemas, normalized multi-model discovery, private file modes and atomic/cancelled session writes. The additional regression case follows the observed Hyundai identity redirect. CLI configuration failure was checked separately: exit 2, no vehicle JSON on stdout and structured JSON error on stderr.
 
-These are synthetic transport tests and local filesystem/CLI checks. No Hyundai vehicle/account, MQTT broker, HA runtime or Docker deployment has been verified. The phase 2 live gate remains pending.
+These are synthetic transport tests and local filesystem/CLI checks. No Hyundai vehicle, MQTT broker, HA runtime or Docker deployment has been verified.
+
+## Live verification — 2026-10-06
+
+The first authorize request redirected to the Hyundai web identity host on port 8080. The original redirect allowlist incorrectly rejected that host before submitting credentials; it was corrected narrowly and covered by a regression test.
+
+After correction, the supplied EU account authenticated successfully. Discovery returned a valid empty vehicle list (exit 4). A second process reused the saved session and returned the same empty list without authenticating again. A controlled renewal test marked the local session cache expired; the real CCI refresh endpoint returned renewed credentials, which the bridge persisted before discovery. Discovery still returned zero vehicles. Session directory/file modes were verified as 0700/0600; no password, account identifier or token is recorded in this evidence.
+
+Authentication/session lifecycle is now live verified. The phase 2 linked-vehicle acceptance gate remains pending. Token renewal was exercised deliberately, not after natural token expiry, and no vehicle was woken or remotely controlled.

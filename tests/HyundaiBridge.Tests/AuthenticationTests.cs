@@ -192,6 +192,33 @@ public sealed class AuthenticationTests
         Assert.Equal(1, fixture.Http.RequestCount);
     }
 
+    [Fact]
+    public async Task AuthorizeFollowsObservedHyundaiWebRedirectBeforeFetchingCertificate()
+    {
+        using var fixture = new Fixture();
+        fixture.Http.Enqueue(_ =>
+        {
+            var response = Response("", HttpStatusCode.Found);
+            response.Headers.Location = new Uri("https://prd.eu-ccapi.hyundai.com:8080/web/v1/user/authorize");
+            return response;
+        });
+        fixture.Http.Enqueue(request =>
+        {
+            Assert.Equal("prd.eu-ccapi.hyundai.com", request.RequestUri!.Host);
+            Assert.Equal(8080, request.RequestUri.Port);
+            return Response("login");
+        });
+        fixture.Http.Enqueue(request =>
+        {
+            Assert.Equal("/auth/api/v1/accounts/certs", request.RequestUri!.AbsolutePath);
+            return Response("[]");
+        });
+        using var client = fixture.Client();
+        var error = await Assert.ThrowsAsync<HyundaiException>(() => client.GetVehiclesAsync(CancellationToken.None));
+        Assert.Contains("certificate", error.Message);
+        Assert.Equal(3, fixture.Http.RequestCount);
+    }
+
     [Theory]
     [InlineData("[]")]
     [InlineData("{\"retValue\":{\"kid\":\"test\",\"n\":null,\"e\":\"AQAB\"}}")]
