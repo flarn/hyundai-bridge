@@ -32,7 +32,7 @@ Phase 2 deliberately provides a read-only `--discover` acceptance command. It do
 
 Initial HA scope: battery/range/odometer sensors, charging/plugged-in binary sensors, lock, climate, AC/DC numbers, refresh/charge buttons and GPS tracker, only when backed by verified data/capabilities. ICE/PHEV/EV vehicles must not all receive EV controls. Additional temperature/door sensors only with reliable measurements. Climate on/off and target must represent observed remote state; leave HVAC action unknown unless backed by data. Defrost maps through a supported native feature only after API verification.
 
-Bridge connectivity, API reachability and vehicle timestamp freshness remain distinct. An API failure preserves the last observation. A ten-minute poll is not evidence of a current vehicle observation; no arbitrary freshness threshold should hide valid stored data.
+Bridge connectivity, API reachability and vehicle timestamp freshness remain distinct. An API failure preserves the last observation. A successful poll is not evidence of a current vehicle observation; no arbitrary freshness threshold should hide valid stored data.
 
 ## Next required evidence
 

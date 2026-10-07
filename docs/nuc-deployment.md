@@ -28,7 +28,7 @@ The HA custom integration has not been installed on the production HA instance i
 
 The project credentials are stored outside Git in Arcane's `.env`. Its host file permissions are not yet verified or tightened to 0600: the Arcane manager image has no `/bin/sh`. A narrowly scoped temporary helper to check/set these permissions is awaiting user approval. The private token-volume permissions above were verified inside the bridge container.
 
-## Current release: connection dashboard — 2026-10-07
+## Connection dashboard — 2026-10-07
 
 Source commit `386e835`, .NET/ASP.NET Core 11 RC1:
 
@@ -54,12 +54,40 @@ Rollback: restore the initial image digest above and remove the HTTP port bindin
 in this Arcane project's Compose configuration, then redeploy only this project.
 Keep the existing credentials and data volume.
 
+## Current release: 60-second polling — 2026-10-07
+
+At the user's request, normal polling now waits 60 seconds after each successful
+read. API-failure backoff remains 10/20/40/60 minutes (or a longer `Retry-After`),
+and the forced-refresh cooldown remains ten minutes. The adapter still retrieves
+the vehicle list; real vehicle status and controls require later implementation
+and linked-vehicle verification. Push is deferred.
+
+```text
+registry.local/hyundai-bridge:20261007-poll-60s
+registry.local/hyundai-bridge@sha256:2c282b8c08eedad0ab57ea76d2d297e24d34059dc286e686d98b80de281c64d8
+```
+
+Deployed through Arcane, changing only this project's image digest. The final
+container started at 07:22:10 UTC. Port binding, credentials and persistent volume
+were preserved. The dashboard showed successful HTTP 200 discovery, connected
+MQTT, a reused session with zero new logins/renewals, and a next poll 60 seconds
+later. Its interval label now reads `Cache · 1 min normalt`.
+
+Two successful discovery calls were observed at 07:22:10 and 07:23:10 UTC,
+followed by a next scheduled read at 07:24:10 UTC. No HTTP/network failures or
+429 responses occurred during this check. Arcane showed all eight containers
+running and this service using the new image digest. Local .NET validation:
+62 tests passed; the two broker-dependent tests were skipped without a test broker.
+
+Rollback: restore the connection-dashboard digest above in this project's Compose
+image and redeploy. Preserve the credentials, port binding and data volume.
+
 ## Install on the Docker host
 
 Copy the repository's `compose.yaml` into the stack directory. Create an owner-only `.env` (0600) with the existing MQTT broker connection and Hyundai credentials, following `.env.example`. Set:
 
 ```text
-HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:eb799186d12a3cdd577a94e8299c7bba28f87b0af9ec5b63bb88dbaafc402c92
+HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:2c282b8c08eedad0ab57ea76d2d297e24d34059dc286e686d98b80de281c64d8
 BRIDGE_ID=home
 ```
 

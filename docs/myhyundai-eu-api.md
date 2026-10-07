@@ -2,6 +2,8 @@
 
 Scope: Hyundai, Europe, Swedish accounts; no model-specific routing. These are undocumented consumer endpoints, not a supported Hyundai developer contract. Upstream live reports are evidence for the implementation shape, not verification of this bridge or every Hyundai model.
 
+Follow-up: [push status research, 2026-10-07](push-status-research.md) identifies an open EU Service Hub MQTT implementation and distinguishes official Pleos Fleet webhooks from private-owner Vehicle Data API access.
+
 Sources inspected at fixed commits:
 
 - [hyundai_kia_connect_api](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/tree/daca6876e98d33815b8c7611fc38f5ec24c8355a), especially `HyundaiCciApiEU.py`, `GspaApiEU.py`, authentication tests, CCS2 fixtures and `gspa/`.
@@ -51,6 +53,8 @@ GSPA submissions can return HTTP 202 with `metaInfo` and SID/service SID. Result
 There is no verified current published EU quota. The [community rate-limit wiki](https://github.com/Hacksore/bluelinky/wiki/API-Rate-Limits) lists 200 EU daily requests but was edited in 2021; it is historical evidence, not a 2026 guarantee. [kia_uvo defaults](https://github.com/Hyundai-Kia-Connect/kia_uvo/blob/1ba15289d8fcf247a4919e6b1a001978bd42947d/README.md) are 30-minute cached reads and four-hour forced reads.
 
 Proposed bridge defaults for phase 3/7: cached reads every ten minutes, no automatic forced refresh, explicit refresh cooldown ten minutes. A single cached endpoint is preferable to pulling all upstream diagnostic/history feeds. Honor 429/Retry-After, back off outages, bound HTTP calls and command-result waits. Final aggregate request budget must include authentication and every vehicle; do not infer spare quota from a successful call. No polling behavior is implemented in phase 2.
+
+2026-10-07 decision: continue with polling, with a normal interval of 60 seconds. This supersedes the proposed ten-minute normal interval; failure backoff and the ten-minute forced-refresh cooldown remain unchanged. The running adapter still retrieves discovery only, not vehicle state. Push is deferred.
 
 ## Verification boundary
 

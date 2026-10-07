@@ -2,7 +2,7 @@ namespace HyundaiBridge.Hosting;
 
 internal sealed class PollingSchedule(TimeProvider time)
 {
-    internal static readonly TimeSpan CachedInterval = TimeSpan.FromMinutes(10);
+    internal static readonly TimeSpan CachedInterval = TimeSpan.FromMinutes(1);
     internal static readonly TimeSpan RefreshCooldown = TimeSpan.FromMinutes(10);
     internal DateTimeOffset DueAt { get; private set; } = time.GetUtcNow();
     private int failures;
