@@ -2,7 +2,7 @@
 
 Target: Docker host `ha-bridges`, `192.168.1.67`, following the existing stacks under `/opt/ha-bridges`. Suggested stack directory: `/opt/ha-bridges/hyundai-bridge`.
 
-## Prepared release — 2026-10-07
+## Initial deployment — 2026-10-07
 
 Source commit: `93a9bdf`. Runtime: .NET 11 RC1.
 
@@ -28,12 +28,38 @@ The HA custom integration has not been installed on the production HA instance i
 
 The project credentials are stored outside Git in Arcane's `.env`. Its host file permissions are not yet verified or tightened to 0600: the Arcane manager image has no `/bin/sh`. A narrowly scoped temporary helper to check/set these permissions is awaiting user approval. The private token-volume permissions above were verified inside the bridge container.
 
+## Current release: connection dashboard — 2026-10-07
+
+Source commit `386e835`, .NET/ASP.NET Core 11 RC1:
+
+```text
+registry.local/hyundai-bridge:20261007-connection-ui
+registry.local/hyundai-bridge@sha256:eb799186d12a3cdd577a94e8299c7bba28f87b0af9ec5b63bb88dbaafc402c92
+```
+
+Deployed through Arcane at 06:57 UTC by changing only this project's image and adding
+the HTTP port binding `192.168.1.67:8076:8080`. Credentials, MQTT settings and the
+existing data volume were preserved. The container uses the exact new digest, user
+`app` and the existing restart policy. All eight containers remained running.
+
+The read-only dashboard is available at **http://192.168.1.67:8076/** on the home
+network, as requested. Browser verification showed a real discovery response with
+HTTP 200 in approximately 282 ms, zero linked vehicles, connected MQTT, a reused
+stored session, zero new logins/renewals, and the next poll ten minutes later.
+Repeated page updates left the Hyundai request count at one. Only aggregate
+connection/session/request metadata is exposed; no vehicle/account identifiers or
+credentials. This does not verify vehicle state or remote commands.
+
+Rollback: restore the initial image digest above and remove the HTTP port binding
+in this Arcane project's Compose configuration, then redeploy only this project.
+Keep the existing credentials and data volume.
+
 ## Install on the Docker host
 
 Copy the repository's `compose.yaml` into the stack directory. Create an owner-only `.env` (0600) with the existing MQTT broker connection and Hyundai credentials, following `.env.example`. Set:
 
 ```text
-HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:1f4606f9fd4d9ac17194b1063d7ed145aee34e460df1a628047925b8f15ef51b
+HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:eb799186d12a3cdd577a94e8299c7bba28f87b0af9ec5b63bb88dbaafc402c92
 BRIDGE_ID=home
 ```
 
@@ -49,7 +75,7 @@ sudo docker compose up -d --no-build hyundai-bridge
 sudo docker compose ps
 ```
 
-The named volume stores private session tokens and the command journal. The service exposes no network ports. Do not run another bridge process against the same data directory or MQTT bridge ID.
+The named volume stores private session tokens and the command journal. The example Compose exposes the status page on loopback port 8076; use the Docker host's LAN address instead for home-network access. Do not run another bridge process against the same data directory or MQTT bridge ID.
 
 ## Verify before recording deployment as complete
 
