@@ -10,5 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Hosting/Web/*" />
+    <EmbeddedResource Include="Hyundai/Gspa/hyundai_cipher_params.json" />
+    <Content Include="Hyundai/Gspa/LICENSE" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

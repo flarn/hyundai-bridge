@@ -154,6 +154,46 @@ public sealed class BrokerTests
         }
     }
 
+    [BrokerFact]
+    public async Task ObservedStatePublishesRetainedReadOnlyCapabilitiesAndSurvivesVehicleFailure()
+    {
+        using var fixture = new CommandFixture();
+        var port = int.Parse(Environment.GetEnvironmentVariable("HYUNDAI_TEST_MQTT_PORT")!);
+        using var bridge = fixture.Bridge(port);
+        await bridge.UpdateSnapshotAsync(new([TestVehicle.Metadata() with { Capabilities = VehicleCapabilities.None }], []), CancellationToken.None);
+        using var stopping = new CancellationTokenSource();
+        var run = bridge.RunAsync(stopping.Token);
+        try
+        {
+            await Until(() => bridge.IsConnected);
+            await bridge.PublishObservedStateAsync(TestVehicle.State(), CancellationToken.None);
+            await bridge.PublishObservedStateAsync(TestVehicle.State() with { BatteryPercent = null }, CancellationToken.None);
+            await bridge.ApiFailedAsync(CancellationToken.None, "example-ev");
+            using var observer = new MqttClientFactory().CreateMqttClient();
+            var received = new ConcurrentDictionary<string, (string Payload, bool Retained)>();
+            observer.ApplicationMessageReceivedAsync += args =>
+            {
+                received[args.ApplicationMessage.Topic] = (Encoding.UTF8.GetString(args.ApplicationMessage.Payload.ToArray()), args.ApplicationMessage.Retain);
+                return Task.CompletedTask;
+            };
+            await observer.ConnectAsync(new MqttClientOptionsBuilder().WithTcpServer("127.0.0.1", port).Build());
+            await observer.SubscribeAsync(new MqttClientSubscribeOptionsBuilder().WithTopicFilter("hyundai/v1/#").Build());
+            await Until(() => received.ContainsKey("hyundai/v1/example-ev/state") && received.ContainsKey("hyundai/v1/example-ev/availability") && received.ContainsKey("hyundai/v1/bridges/home/manifest"));
+            using var manifest = JsonDocument.Parse(received["hyundai/v1/bridges/home/manifest"].Payload);
+            var caps = manifest.RootElement.GetProperty("vehicles")[0].GetProperty("capabilities");
+            Assert.Contains("batteryPercent", caps.GetProperty("stateFields").EnumerateArray().Select(x => x.GetString()));
+            Assert.Empty(caps.GetProperty("commands").EnumerateArray());
+            using var state = JsonDocument.Parse(received["hyundai/v1/example-ev/state"].Payload);
+            Assert.Equal(JsonValueKind.Null, state.RootElement.GetProperty("batteryPercent").ValueKind);
+            Assert.Equal(382, state.RootElement.GetProperty("estimatedRangeKm").GetDouble());
+            Assert.True(received["hyundai/v1/example-ev/state"].Retained);
+            using var availability = JsonDocument.Parse(received["hyundai/v1/example-ev/availability"].Payload);
+            Assert.False(availability.RootElement.GetProperty("apiReachable").GetBoolean());
+            await observer.DisconnectAsync();
+        }
+        finally { await stopping.CancelAsync(); await run.WaitAsync(TimeSpan.FromSeconds(5)); }
+    }
+
     internal static MqttApplicationMessage Message(string topic, string payload, bool retain) =>
         new MqttApplicationMessageBuilder().WithTopic(topic).WithPayload(payload).WithRetainFlag(retain)
             .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce).Build();

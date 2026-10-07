@@ -86,17 +86,38 @@ internal sealed class MqttBridge : IDisposable
         finally { publishing.Release(); }
     }
 
-    internal async Task ApiFailedAsync(CancellationToken cancellationToken)
+    internal async Task ApiFailedAsync(CancellationToken cancellationToken, string? vehicleId = null)
     {
         await publishing.WaitAsync(cancellationToken);
         try
         {
-            foreach (var id in vehicles.Keys)
+            foreach (var id in vehicles.Keys.Where(id => vehicleId is null || id == vehicleId))
             {
                 var topic = $"{Contract.Prefix}/{id}/availability";
                 retained[topic] = Contract.Serialize(new VehicleAvailability(false));
                 await PublishIfConnectedAsync(topic, retained[topic], true, cancellationToken);
             }
+        }
+        finally { publishing.Release(); }
+    }
+
+    internal async Task PublishObservedStateAsync(VehicleState state, CancellationToken cancellationToken)
+    {
+        Contract.ValidateState(state);
+        await publishing.WaitAsync(cancellationToken);
+        try
+        {
+            var info = vehicles[state.VehicleId];
+            using var document = System.Text.Json.JsonDocument.Parse(Contract.Serialize(state));
+            var fields = document.RootElement.EnumerateObject()
+                .Where(p => p.Value.ValueKind != System.Text.Json.JsonValueKind.Null &&
+                    p.Name is not ("vehicleId" or "vin" or "vehicleUpdatedAt" or "bridgeUpdatedAt"))
+                .Select(p => p.Name).Union(info.Capabilities.StateFields).ToArray();
+            vehicles[state.VehicleId] = info with { Capabilities = info.Capabilities with { StateFields = fields } };
+            CacheState(state);
+            retained[$"{Contract.Prefix}/{state.VehicleId}/availability"] = Contract.Serialize(new VehicleAvailability(true));
+            retained[BridgeTopic + "/manifest"] = Contract.Manifest(options.BridgeId, new(vehicles.Values.ToArray(), states.Values.ToArray()));
+            await PublishCacheAsync(cancellationToken);
         }
         finally { publishing.Release(); }
     }

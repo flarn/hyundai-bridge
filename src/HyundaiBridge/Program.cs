@@ -78,7 +78,7 @@ try
         builder.Services.AddSingleton<ILoggerFactory>(logs);
         builder.Services.Configure<HostOptions>(options => options.ShutdownTimeout = TimeSpan.FromSeconds(15));
         builder.Services.AddSingleton<IHostedService>(new BridgeWorker(mqtt, client.GetBridgeSnapshotAsync,
-            backendGate, TimeProvider.System, logs.CreateLogger<BridgeWorker>(), client.Statistics));
+            backendGate, TimeProvider.System, logs.CreateLogger<BridgeWorker>(), client.Statistics, client.GetStateAsync));
         await using var host = builder.Build();
         StatusPage.Map(host, client.Statistics, () => mqtt.IsConnected);
         await host.RunAsync(stopping.Token);

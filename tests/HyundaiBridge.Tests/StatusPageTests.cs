@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using HyundaiBridge.Hosting;
+using HyundaiBridge.Hyundai;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -13,6 +14,33 @@ namespace HyundaiBridge.Tests;
 
 public sealed class StatusPageTests
 {
+    [Fact]
+    public void StoredStatusResponseKeepsDataButMasksIdentifiersTokensAndLocation()
+    {
+        using var document = JsonDocument.Parse("""
+            {"metaInfo":{"retCode":"S","msgId":"private-id"},"data":{"vin":"private-vin",
+            "nested":[{"accessToken":"private-token","password":"private-password"}],"WasherFluid":{"Level":1},
+            "state":{"Vehicle":{"Green":{"BatteryManagement":{"BatteryRemain":{"Ratio":80.5}}},
+            "Location":{"GeoCoord":{"Latitude":59.123456,"Longitude":18.123456}}}}}}
+            """);
+        var response = StatusResponseRedactor.Redact(document.RootElement);
+        var stats = new BridgeStatistics(new FixedClock());
+        stats.VehicleResponseReceived("private-vehicle-id", "IONIQ 9", response);
+        var snapshot = stats.Snapshot(true);
+        var json = JsonSerializer.Serialize(snapshot);
+        foreach (var secret in new[] { "private-id", "private-vin", "private-token", "private-password", "private-vehicle-id", "59.123456", "18.123456" })
+            Assert.DoesNotContain(secret, json);
+        Assert.Equal(80.5, response.GetProperty("data").GetProperty("state").GetProperty("Vehicle")
+            .GetProperty("Green").GetProperty("BatteryManagement").GetProperty("BatteryRemain").GetProperty("Ratio").GetDouble());
+        Assert.Equal("private-vin", document.RootElement.GetProperty("data").GetProperty("vin").GetString());
+        Assert.Equal(1, response.GetProperty("data").GetProperty("WasherFluid").GetProperty("Level").GetInt32());
+        stats.VehicleResponseReceived("private-vehicle-id", "IONIQ 9", JsonSerializer.SerializeToElement(new { updated = true }));
+        Assert.Single(stats.Snapshot(false).VehicleResponses!);
+        Assert.Equal(80.5, snapshot.VehicleResponses![0].Response.GetProperty("data").GetProperty("state").GetProperty("Vehicle")
+            .GetProperty("Green").GetProperty("BatteryManagement").GetProperty("BatteryRemain").GetProperty("Ratio").GetDouble());
+        Assert.Equal(0, stats.Snapshot(false).RequestCount);
+    }
+
     [Fact]
     public void StatisticsKeepBoundedDetachedHistoryAndDistinguishCancellationFromFailures()
     {
@@ -88,6 +116,7 @@ public sealed class StatusPageTests
             Assert.Equal(0, data.RootElement.GetProperty("requestCount").GetInt64());
             Assert.Equal(0, stats.Snapshot(false).RequestCount);
             Assert.Contains("Koll på anslutningen", await http.GetStringAsync("/"));
+            Assert.Contains("Senaste bilstatus · JSON", await http.GetStringAsync("/"));
             Assert.Contains("connection-grid", await http.GetStringAsync("/app.css"));
             Assert.Contains("fetch('/api/status'", await http.GetStringAsync("/app.js"));
             using var command = await http.PostAsync("/api/status", new StringContent("{}"));

@@ -320,3 +320,5 @@
                                                                                                                                                     .requests{
                                                                                                                                                       padding:20px 16px}
                                                                                                                                                     }
+
+.response-panel pre{max-height:480px;overflow:auto;padding:18px;background:#f3f6f8;border:1px solid var(--line);border-radius:12px;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;tab-size:2}.response-panel h3{font-size:14px;margin:18px 0 10px}

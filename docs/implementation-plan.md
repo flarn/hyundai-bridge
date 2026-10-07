@@ -21,9 +21,9 @@ On 2026-10-06 the user confirmed the vehicle is not linked yet and explicitly re
 | Phase | Deliverable | Acceptance and current status |
 |---|---|---|
 | 1 | Current EU API note and plan | Source inspected at pinned commits; documented unknowns. Done. |
-| 2 | CCI password login, session persistence/refresh, normalized discovery | Live EU login, restart/session reuse and token renewal verified. Discovery returns zero vehicles; linked VIN/model acceptance remains pending. |
-| 3 | GSPA cryptography and cached normalized state | Read real data, verify units/null/sentinel mapping and vehicle/bridge timestamps. Not started. |
-| 4 | MQTT state/metadata/availability transport | v1 schema/fixtures and real Mosquitto HA-consumer bootstrap/reload verified. .NET publisher/Last Will, reconnect and real broker verification implemented. Actual Hyundai state source remains pending. |
+| 2 | CCI password login, session persistence/refresh, normalized discovery | Live EU login, restart/session reuse and token renewal verified. A linked vehicle is now discovered; real GSPA status also returned HTTP 200 on 2026-10-07. |
+| 3 | GSPA cryptography and cached normalized state | Real cached GSPA status retrieved and normalized; see vehicle-status-research.md. Remote controls are separate. |
+| 4 | MQTT state/metadata/availability transport | v1 schema/fixtures and real Mosquitto HA-consumer bootstrap/reload verified. .NET publisher/Last Will, reconnect and real broker verification implemented. Actual Hyundai cached state source implemented; deployment verification is recorded separately. |
 | 5 | Config Flow and native HA platforms | Implemented and tested in HA 2026.9.4: custom manifest discovery, native entities, VIN identity, per-vehicle capabilities, availability and services. No production deployment or visual Tile-card inspection. |
 | 6 | Refresh, lock, unlock, climate start/stop, charge start/stop, limits | Implement and verify each operation against the actual API before the next. Separate acceptance, completion and refreshed observation. Command transport implemented; actual Hyundai operations not started. |
 | 7 | Polling, cooldowns, outage cache, Docker, logging, final tests | Polling/backoff, memory cache, command journal/cooldown, Docker and outage/restart tests implemented. Final live vehicle verification remains pending. |

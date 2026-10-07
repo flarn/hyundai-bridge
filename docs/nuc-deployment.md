@@ -132,7 +132,7 @@ cadence is separate from discovery.
 Rollback: restore the previous ten-minute-discovery image digest (`56ca4365…`) and
 redeploy only this project. Preserve credentials, port binding and data volume.
 
-## Current release: at most five startup attempts — 2026-10-07
+## At most five startup attempts — 2026-10-07
 
 Startup discovery is limited to five attempts in total (the initial attempt plus
 four retries). Failed attempts wait 10/20/40/60 minutes, or a longer Hyundai
@@ -157,12 +157,58 @@ Rollback: restore the preceding startup-only image (`e77a6032…`), preserving
 credentials, port binding and persistent volume. Vehicle status and controls
 remain pending.
 
+## Current release: cached vehicle status and formatted JSON — 2026-10-07
+
+The bridge reads each discovered vehicle's cached status immediately after startup
+discovery, then every ten minutes after a successful read. No vehicle wake or remote
+control endpoint is called. Discovery retains its five-attempt startup-only policy.
+Status failures preserve the last state and back off per vehicle; HTTP 429 delays
+all vehicles for the account. Observed state is published retained using the existing
+v1 contract, with read-only capabilities inferred from actual non-null fields.
+
+```text
+registry.local/hyundai-bridge:20261007-status-json
+registry.local/hyundai-bridge@sha256:131f70070711322d35eaa0ee2c97ffefd5cf1c2668d9d48136c0c29e0f0a788a
+```
+
+Deployed through Arcane by changing only this project's image. Final startup was
+18:38:16 UTC. The running image digest was verified in the container overview.
+Discovery, CCS token exchange and stored-status retrieval all returned HTTP 200;
+one IONIQ 9 was found, MQTT was connected and no failures were registered.
+The next status read was scheduled for 18:48:16 UTC, with no further discovery due.
+Credentials, port binding and the persistent session volume were preserved.
+
+The dashboard shows the latest successful response as indented, scrollable JSON,
+with identifiers, credentials and location masked before diagnostic storage. Browser
+verification confirmed the real IONIQ 9 response and preserved washer-fluid
+data. Repeated dashboard updates made no extra Hyundai requests. Raw battery SoC
+was 80.5%; the integer v1 state contract reports 81%. Range was 408 km, odometer
+112.4 km, doors locked, charging/plugged-in false and AC/DC charge limits 80%.
+The cached vehicle timestamp was 16:53:13 UTC; fetching it does not make it current.
+
+Before the JSON enhancement, a read-only production MQTT subscription verified the
+retained manifest, normalized state and availability with empty command capabilities.
+Local validation passed 80 .NET tests with a disposable broker and 51 HA tests,
+including the .NET/MQTT/HA path. After the diagnostic enhancement, 79 .NET tests
+passed (three environment-dependent checks skipped without the broker/HA companion);
+the four diagnostic tests passed again after correcting identifier masking.
+The production HA custom integration and remote commands are not deployed or verified.
+See [status research](vehicle-status-research.md) for the adapter evidence and limitations.
+
+Rollback: restore the preceding cached-status image below, preserving configuration
+and storage, then redeploy only this project. It retains ten-minute cached polling
+but predates the formatted response panel.
+
+```text
+registry.local/hyundai-bridge@sha256:11a7d6bdc039a8e7a3eb2cca73eea7f10091db244ef2c452c866bddcd74e0bbf
+```
+
 ## Install on the Docker host
 
 Copy the repository's `compose.yaml` into the stack directory. Create an owner-only `.env` (0600) with the existing MQTT broker connection and Hyundai credentials, following `.env.example`. Set:
 
 ```text
-HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:dc15ffa9ad87584f91b6ee2ae444ba8bce61b42478a51415884a4cafaca419e9
+HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:131f70070711322d35eaa0ee2c97ffefd5cf1c2668d9d48136c0c29e0f0a788a
 BRIDGE_ID=home
 ```
 

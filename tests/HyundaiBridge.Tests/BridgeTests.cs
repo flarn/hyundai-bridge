@@ -1,3 +1,4 @@
+using HyundaiBridge.Hyundai;
 using System.Text;
 using System.Text.Json;
 using HyundaiBridge.Domain;
@@ -259,6 +260,89 @@ public sealed class BridgeTests
         Assert.Equal(success.VehicleCount, failure.VehicleCount);
         Assert.Equal(worker.Schedule.DueAt, failure.NextPollAt);
         Assert.Equal("IOException", failure.LastFailure);
+    }
+
+    [Fact]
+    public async Task StatusPollingIsTenMinutesAndDoesNotRediscoverVehicles()
+    {
+        using var fixture = new CommandFixture();
+        using var mqtt = fixture.Bridge();
+        var discoveryCalls = 0;
+        var stateCalls = 0;
+        var stats = new BridgeStatistics(fixture.Clock);
+        using var worker = new BridgeWorker(mqtt,
+            _ => { discoveryCalls++; return Task.FromResult(new BridgeSnapshot([TestVehicle.Metadata() with { Capabilities = VehicleCapabilities.None }], [])); },
+            fixture.Gate, fixture.Clock, NullLogger<BridgeWorker>.Instance, stats,
+            (_, _) => { stateCalls++; return Task.FromResult(TestVehicle.State() with { BridgeUpdatedAt = fixture.Clock.Now }); });
+        await worker.PollOnceAsync(CancellationToken.None);
+        await worker.PollStatesOnceAsync(CancellationToken.None);
+        Assert.Equal(1, stateCalls);
+        Assert.Equal(fixture.Clock.Now.AddMinutes(10), stats.Snapshot(false).NextStatePollAt);
+        Assert.Equal(73, mqtt.States["example-ev"].BatteryPercent);
+        fixture.Clock.Now += TimeSpan.FromMinutes(9);
+        await worker.PollStatesOnceAsync(CancellationToken.None);
+        Assert.Equal(1, stateCalls);
+        fixture.Clock.Now += TimeSpan.FromMinutes(1);
+        await worker.PollStatesOnceAsync(CancellationToken.None);
+        Assert.Equal(2, stateCalls);
+        Assert.Equal(1, discoveryCalls);
+        Assert.Null(stats.Snapshot(false).NextPollAt);
+    }
+
+    [Fact]
+    public async Task OneVehicleFailureKeepsCacheAndDoesNotBlockOtherVehicles()
+    {
+        using var fixture = new CommandFixture();
+        using var mqtt = fixture.Bridge();
+        var first = TestVehicle.Metadata() with { Capabilities = VehicleCapabilities.None };
+        var second = first with { VehicleId = "second", Vin = "SECOND-VIN" };
+        var fail = false;
+        var calls = new Dictionary<string, int>();
+        var stats = new BridgeStatistics(fixture.Clock);
+        using var worker = new BridgeWorker(mqtt,
+            _ => Task.FromResult(new BridgeSnapshot([first, second], [])),
+            fixture.Gate, fixture.Clock, NullLogger<BridgeWorker>.Instance, stats,
+            (info, _) =>
+            {
+                calls[info.VehicleId] = calls.GetValueOrDefault(info.VehicleId) + 1;
+                if (fail && info.VehicleId == first.VehicleId) throw new HyundaiException("unavailable", 503);
+                return Task.FromResult(TestVehicle.State() with { VehicleId = info.VehicleId, Vin = info.Vin, BridgeUpdatedAt = fixture.Clock.Now });
+            });
+        await worker.PollOnceAsync(CancellationToken.None);
+        await worker.PollStatesOnceAsync(CancellationToken.None);
+        var original = mqtt.States[first.VehicleId];
+        fail = true;
+        fixture.Clock.Now += TimeSpan.FromMinutes(10);
+        await worker.PollStatesOnceAsync(CancellationToken.None);
+        Assert.Same(original, mqtt.States[first.VehicleId]);
+        Assert.Equal(fixture.Clock.Now, mqtt.States[second.VehicleId].BridgeUpdatedAt);
+        fixture.Clock.Now += TimeSpan.FromMinutes(10);
+        await worker.PollStatesOnceAsync(CancellationToken.None);
+        fixture.Clock.Now += TimeSpan.FromMinutes(10);
+        await worker.PollStatesOnceAsync(CancellationToken.None);
+        Assert.Equal(3, calls[first.VehicleId]);
+        Assert.Equal(4, calls[second.VehicleId]);
+    }
+
+    [Fact]
+    public async Task StatusRateLimitDefersTheWholeAccount()
+    {
+        using var fixture = new CommandFixture();
+        using var mqtt = fixture.Bridge();
+        var first = TestVehicle.Metadata() with { Capabilities = VehicleCapabilities.None };
+        var stats = new BridgeStatistics(fixture.Clock);
+        var calls = 0;
+        using var worker = new BridgeWorker(mqtt,
+            _ => Task.FromResult(new BridgeSnapshot([first, first with { VehicleId = "second", Vin = "SECOND-VIN" }], [])),
+            fixture.Gate, fixture.Clock, NullLogger<BridgeWorker>.Instance, stats,
+            (_, _) => { calls++; throw new HyundaiException("limited", 429, TimeSpan.FromHours(2)); });
+        await worker.PollOnceAsync(CancellationToken.None);
+        await worker.PollStatesOnceAsync(CancellationToken.None);
+        Assert.Equal(1, calls);
+        Assert.Equal(fixture.Clock.Now.AddHours(2), stats.Snapshot(false).NextStatePollAt);
+        fixture.Clock.Now += TimeSpan.FromMinutes(60);
+        await worker.PollStatesOnceAsync(CancellationToken.None);
+        Assert.Equal(1, calls);
     }
 
     [Fact]

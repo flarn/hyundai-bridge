@@ -6,9 +6,10 @@ internal sealed class BridgeStatistics(TimeProvider time)
     private readonly object gate = new();
     private readonly DateTimeOffset startedAt = time.GetUtcNow();
     private readonly Queue<ApiRequestObservation> recentRequests = new();
+    private readonly Dictionary<string, VehicleResponseObservation> vehicleResponses = new();
     private long requestCount, requestFailures, rateLimitedResponses, logins, renewals;
     private double totalDurationMs;
-    private DateTimeOffset? sessionExpiresAt, lastSuccessAt, lastFailureAt, nextPollAt;
+    private DateTimeOffset? sessionExpiresAt, lastSuccessAt, lastFailureAt, nextPollAt, nextStatePollAt;
     private string? sessionSource, lastFailure;
     private bool? apiReachable;
     private int? vehicleCount;
@@ -59,6 +60,11 @@ internal sealed class BridgeStatistics(TimeProvider time)
     }
 
     internal void PollScheduled(DateTimeOffset? dueAt) { lock (gate) nextPollAt = dueAt; }
+    internal void StatePollScheduled(DateTimeOffset dueAt) { lock (gate) nextStatePollAt = dueAt; }
+    internal void VehicleResponseReceived(string vehicleId, string? model, System.Text.Json.JsonElement response)
+    {
+        lock (gate) vehicleResponses[vehicleId] = new(model, time.GetUtcNow(), response);
+    }
 
     internal BridgeStatus Snapshot(bool mqttConnected)
     {
@@ -67,7 +73,7 @@ internal sealed class BridgeStatistics(TimeProvider time)
                 requestFailures, rateLimitedResponses,
                 requestCount == 0 ? null : Math.Round(totalDurationMs / requestCount, 1),
                 logins, renewals, sessionSource, sessionExpiresAt, vehicleCount, lastSuccessAt,
-                lastFailureAt, lastFailure, nextPollAt, recentRequests.Reverse().ToArray());
+                lastFailureAt, lastFailure, nextPollAt, recentRequests.Reverse().ToArray(), nextStatePollAt, vehicleResponses.Values.ToArray());
     }
 }
 
@@ -79,4 +85,7 @@ internal sealed record BridgeStatus(DateTimeOffset StartedAt, DateTimeOffset Obs
     long RateLimitedResponses, double? AverageDurationMs, long Logins, long Renewals,
     string? SessionSource, DateTimeOffset? SessionExpiresAt, int? VehicleCount,
     DateTimeOffset? LastSuccessAt, DateTimeOffset? LastFailureAt, string? LastFailure,
-    DateTimeOffset? NextPollAt, IReadOnlyList<ApiRequestObservation> RecentRequests);
+    DateTimeOffset? NextPollAt, IReadOnlyList<ApiRequestObservation> RecentRequests, DateTimeOffset? NextStatePollAt = null,
+    IReadOnlyList<VehicleResponseObservation>? VehicleResponses = null);
+
+internal sealed record VehicleResponseObservation(string? Model, DateTimeOffset ReceivedAt, System.Text.Json.JsonElement Response);

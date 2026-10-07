@@ -48,7 +48,8 @@ The data volume contains confidential session tokens, the command journal and a 
 
 ## Outage, polling and command behavior
 
-* Retrieve the vehicle list at startup only. After successful discovery, including an empty garage, no further list read is scheduled for this process. Restart the bridge to discover garage changes. Startup failures retain the existing 10/20/40/60-minute backoff, honoring a longer Hyundai `Retry-After`, for at most five discovery attempts in total. After the fifth failure, restart the bridge to retry. The requested **60-second** interval applies to cached vehicle status when the state adapter is implemented, not discovery. The current adapter retrieves discovery only, not vehicle state. There is no automatic forced vehicle refresh.
+* Retrieve the vehicle list at startup only, with at most five attempts in total and the existing 10/20/40/60-minute failure backoff (or a longer `Retry-After`). A successful empty garage also stops discovery until restart.
+* After discovery, retrieve each vehicle's cached status immediately, then every **10 minutes** after a successful read. Never call a wake/forced-refresh endpoint automatically. Each vehicle has its own failure backoff of 10/20/40/60 minutes; another vehicle's failure does not discard successful state. An HTTP 429 postpones all vehicles for the account, honoring a longer `Retry-After`. MQTT continues running independently. The dashboard distinguishes the next discovery attempt from the next vehicle-status read.
 * Keep the last normalized observation in memory across API failures and MQTT reconnects. Preserve its `vehicleUpdatedAt` and `bridgeUpdatedAt`; reconnect is not a new observation. API failure changes per-vehicle reachability, not vehicle values. Freshness stays `unknown` until the adapter provides evidence; no age threshold invents `current`.
 * Retain manifest, state and availability. Use a retained `offline` Last Will and publish `online` after MQTT subscriptions/cache replay. Reconnect delays are 2/4/8/16/32/60 seconds; each connection attempt has a 10-second timeout. A broker restart replays the cache. After a bridge restart, retained broker state can bootstrap HA; fresh in-memory state requires a successful adapter read. No separate persistent location cache is created.
 * Controls are non-retained, UUID-correlated JSON. Reject malformed/oversized payloads, unknown actions and unsupported values. MQTT 5 `Retain As Published` identifies and rejects live retained controls as well as retained replay. The bounded ingress queue holds 64 commands; controls dropped on overload/disconnection have an unknown outcome to HA, without automatic resend.
@@ -72,7 +73,9 @@ connection guarantee or Hyundai's remaining API quota.
 
 Statistics are in memory and reset on restart. Browser updates read only local statistics;
 they neither poll Hyundai nor wake vehicles. No credentials, tokens, account identifiers,
-VINs, coordinates, request URLs, response bodies or raw exception text are served.
+VINs, coordinates, request URLs or raw exception text are served. The latest successful
+vehicle-status response is displayed as formatted JSON, with identifiers, credentials
+and location masked before diagnostic storage. This response stays outside the MQTT contract.
 The page has no commands or configuration writes.
 
 Outside Docker, HTTP defaults to `127.0.0.1:8080`; `ASPNETCORE_URLS` can select the listener.
@@ -99,3 +102,5 @@ HYUNDAI_TEST_MQTT_PORT=18884 .venv/bin/pytest -q
 The .NET broker test checks retained documents, retained-control rejection, correlation, deduplication, Last Will and reconnect. The HA pipeline test starts a .NET test adapter and exercises `.NET → Mosquitto → native HA entities → HA unlock service → .NET → accepted/completed → observed state`. Its .NET companion is skipped in standalone runs and started by Python; this is an explicit optional broker dependency, not a disabled production path. Build the Release tests before running Python's pipeline test.
 
 Container verification uses dummy credentials and an internal Docker network without Internet access: API failure/backoff, non-root/private storage, read-only filesystem, broker restart, abrupt Last Will, graceful stop/start and durable volume. These checks do not constitute Hyundai vehicle verification or a production HA deployment.
+
+The status dashboard includes the latest successful cached vehicle-status response as formatted JSON. Identifiers, tokens/password fields and location are masked before entering diagnostic storage. This diagnostic response is not part of the normalized MQTT/HA contract. Viewing it does not contact Hyundai.

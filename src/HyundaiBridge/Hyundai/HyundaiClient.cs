@@ -22,6 +22,10 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
     private readonly string accountHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(username)));
     private HyundaiSession? session;
     private bool loaded;
+    private readonly GspaStamp stamp = new();
+    private readonly Dictionary<string, string> protocols = new();
+    private string? ccsToken, ccsUserId;
+    private DateTimeOffset ccsExpiresAt;
     internal BridgeStatistics Statistics { get; } = new(time);
 
     internal async Task<IReadOnlyList<Vehicle>> GetVehiclesAsync(CancellationToken cancellationToken)
@@ -29,12 +33,6 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
         await gate.WaitAsync(cancellationToken);
         try
         {
-            if (!loaded)
-            {
-                session = await store.LoadAsync(accountHash, cancellationToken);
-                if (session is not null) Statistics.SessionUpdated("stored", session.ExpiresAt);
-                loaded = true;
-            }
             await EnsureSessionAsync(forceRefresh: false, cancellationToken);
             for (var attempt = 0; attempt < 2; attempt++)
             {
@@ -47,6 +45,19 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
                 }
                 var data = await ReadJsonAsync(response, "Vehicle discovery", cancellationToken);
                 var vehicles = VehicleParser.Parse(data);
+                var entries = data.ValueKind == JsonValueKind.Array ? data :
+                    data.TryGetProperty("contents", out var contents) ? contents : data.GetProperty("vehicles");
+                foreach (var entry in entries.ValueKind == JsonValueKind.Array ? entries.EnumerateArray().ToArray() : [entries])
+                {
+                    var id = VehicleStateParser.At(entry, "ccspCarId");
+                    if (id.ValueKind != JsonValueKind.String) id = VehicleStateParser.At(entry, "ccspVehicle.carId");
+                    if (id.ValueKind != JsonValueKind.String) id = VehicleStateParser.At(entry, "vehicleId");
+                    var protocol = VehicleStateParser.At(entry, "ccs2ProtocolSupport");
+                    if (protocol.ValueKind == JsonValueKind.Undefined) protocol = VehicleStateParser.At(entry, "ccu_ccs2_protocol_support");
+                    protocols[id.GetString()!] = protocol.ValueKind == JsonValueKind.Number ? protocol.ToString() :
+                        VehicleStateParser.At(entry, "isCcs").ValueKind == JsonValueKind.True &&
+                        VehicleStateParser.At(entry, "isCcsOpen").ValueKind == JsonValueKind.True ? "2" : "0";
+                }
                 logger.LogInformation("Vehicle discovery completed: {VehicleCount} vehicles", vehicles.Count);
                 return vehicles;
             }
@@ -66,15 +77,100 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
                 logger.LogWarning("Discovered vehicle omitted from bridge metadata because VIN is missing");
                 continue;
             }
-            // Discovery is the only implemented adapter feature. No state or
-            // writable capability is inferred from a model name or test fixture.
+            // State fields are advertised only after an actual observation.
             vehicles.Add(new(vehicle.VehicleId, vehicle.Vin, vehicle.Name, vehicle.Model, VehicleCapabilities.None));
         }
         return new(vehicles, []);
     }
 
+    internal async Task<VehicleState> GetStateAsync(VehicleMetadata vehicle, CancellationToken cancellationToken)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            await EnsureSessionAsync(false, cancellationToken);
+            for (var attempt = 0; attempt < 2; attempt++)
+            {
+                await EnsureCcsAsync(cancellationToken);
+                var now = time.GetUtcNow();
+                var requestId = GspaStamp.RequestId(session!.DeviceId, now);
+                using var request = new HttpRequestMessage(HttpMethod.Get,
+                    "https://gspa-ccs-eu.hyundai.com/gspa/v1/status/vehicles/" + Uri.EscapeDataString(vehicle.VehicleId) + "/stored-status");
+                var headers = new Dictionary<string, string>
+                {
+                    ["Authorization"] = "Bearer " + ccsToken,
+                    ["ccsp-service-id"] = "6d477c38-3ca4-4cf3-9557-2a1929a94654",
+                    ["ccsp-application-id"] = "6d477c38-3ca4-4cf3-9557-2a1929a94654",
+                    ["ccsp-device-id"] = session.DeviceId, ["X-Device-Id"] = session.DeviceId,
+                    ["Ccuccs2protocolsupport"] = protocols.GetValueOrDefault(vehicle.VehicleId, "0"),
+                    ["client-id"] = ClientId, ["client-name"] = "hyundai", ["client-version"] = "1.3.3",
+                    ["client-os-code"] = "AOS", ["client-os-version"] = "14", ["Language"] = "sv",
+                    ["User-Agent"] = "okhttp/3.12.0", ["Accept"] = "application/json",
+                    ["X-Request-Id"] = requestId, ["X-Stamp"] = stamp.Compute(requestId, now.ToUnixTimeSeconds(), ccsUserId!)
+                };
+                foreach (var header in headers) request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                using var response = await SendAsync(request, "stored-status", cancellationToken);
+                if (response.StatusCode == HttpStatusCode.Unauthorized && attempt == 0)
+                {
+                    ccsToken = null;
+                    await EnsureSessionAsync(true, cancellationToken);
+                    continue;
+                }
+                var data = await ReadJsonAsync(response, "Cached vehicle status", cancellationToken);
+                if (VehicleStateParser.At(data, "metaInfo.retCode").ToString() != "S")
+                    throw new HyundaiException("Hyundai cached vehicle status was rejected by the backend.");
+                Statistics.VehicleResponseReceived(vehicle.VehicleId, vehicle.Model, StatusResponseRedactor.Redact(data));
+                var state = VehicleStateParser.Parse(VehicleStateParser.At(data, "data"), vehicle, time.GetUtcNow());
+                logger.LogInformation("Cached vehicle state retrieved");
+                return state;
+            }
+            throw new HyundaiException("Cached vehicle state failed after credential renewal.");
+        }
+        finally { gate.Release(); }
+    }
+
+    private async Task EnsureCcsAsync(CancellationToken cancellationToken)
+    {
+        if (ccsToken is not null && ccsExpiresAt > time.GetUtcNow().AddMinutes(2)) return;
+        using var request = CciRequest(HttpMethod.Post, "v1/auth/token-exchange?serviceType=CCS", session!);
+        request.Content = new ByteArrayContent([]);
+        using var response = await SendAsync(request, "ccs-exchange", cancellationToken);
+        var data = await ReadJsonAsync(response, "Vehicle token exchange", cancellationToken);
+        var access = VehicleStateParser.At(data, "accessToken");
+        if (access.ValueKind != JsonValueKind.String) access = VehicleStateParser.At(data, "ccsAccessToken");
+        if (access.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(access.GetString()))
+            throw new HyundaiException("Hyundai vehicle token exchange returned no token.");
+        var token = access.GetString()!;
+        var uid = JwtClaim(token, "uid") ?? JwtClaim(session!.IdToken, "sub");
+        if (string.IsNullOrWhiteSpace(uid)) throw new HyundaiException("Hyundai vehicle token has no supported user identifier.");
+        var ttl = VehicleStateParser.At(data, "expiresTime");
+        if (!int.TryParse(ttl.ToString(), out var seconds) || seconds <= 0)
+            throw new HyundaiException("Hyundai vehicle token has an unsupported expiry schema.");
+        ccsToken = token; ccsUserId = uid; ccsExpiresAt = time.GetUtcNow().AddSeconds(seconds);
+        logger.LogInformation("Hyundai vehicle token exchanged");
+    }
+
+    private static string? JwtClaim(string token, string claim)
+    {
+        try
+        {
+            var parts = token.Split('.');
+            if (parts.Length < 2) return null;
+            using var document = JsonDocument.Parse(DecodeBase64Url(parts[1]));
+            var value = VehicleStateParser.At(document.RootElement, claim);
+            return value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        }
+        catch (Exception error) when (error is FormatException or JsonException) { return null; }
+    }
+
     private async Task EnsureSessionAsync(bool forceRefresh, CancellationToken cancellationToken)
     {
+        if (!loaded)
+        {
+            session = await store.LoadAsync(accountHash, cancellationToken);
+            if (session is not null) Statistics.SessionUpdated("stored", session.ExpiresAt);
+            loaded = true;
+        }
         if (session is not null && !forceRefresh && !session.NeedsRefresh(time.GetUtcNow())) return;
         HyundaiSession next;
         if (session is null)

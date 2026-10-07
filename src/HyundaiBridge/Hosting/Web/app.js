@@ -2,9 +2,10 @@ const text = (id, value) => { document.getElementById(id).textContent = value; }
 const dateFormat = new Intl.DateTimeFormat('sv-SE', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
 const date = value => value ? dateFormat.format(new Date(value)) : '—';
 const number = value => value == null ? '—' : new Intl.NumberFormat('sv-SE').format(value);
-const operations = { discovery:'Hämta fordonslista', refresh:'Förnya session', certificate:'Hämta inloggningscertifikat', signin:'Logga in', exchange:'Skapa session', authorize:'Auktorisera inloggning' };
+const operations = { 'stored-status':'Hämta cachad bilstatus', 'ccs-exchange':'Skapa fordonsession', discovery:'Hämta fordonslista', refresh:'Förnya session', certificate:'Hämta inloggningscertifikat', signin:'Logga in', exchange:'Skapa session', authorize:'Auktorisera inloggning' };
 const outcomes = { network:'Nätfel', timeout:'Timeout', cancelled:'Avbrutet' };
 const pill = (id, label, state) => { const el = document.getElementById(id); el.textContent = label; el.className = 'pill' + (state == null ? '' : state ? ' ok' : ' error'); };
+let lastResponses = "";
 function render(data) {
   text('api-title', data.apiReachable == null ? 'Inväntar första hämtningen' : data.apiReachable ? 'Kontakt fungerar' : 'Senaste hämtningen misslyckades');
   text('api-description', data.apiReachable == null ? 'Status visas när bryggan har kontaktat Hyundai.' : data.apiReachable ? 'Senaste Hyundai-hämtningen lyckades.' : 'Tidigare uppgifter behålls. Bryggan väntar före nästa försök.');
@@ -13,6 +14,7 @@ function render(data) {
   text('mqtt-title', data.mqttConnected ? 'Transport ansluten' : 'Transport frånkopplad');
   text('last-success', date(data.lastSuccessAt));
   text('next-poll', data.nextPollAt ? date(data.nextPollAt) : data.lastSuccessAt ? 'Ingen planerad' : data.lastFailureAt ? 'Stoppad · starta om bryggan' : 'Inväntar uppstart');
+  text('next-state-poll', data.nextStatePollAt ? date(data.nextStatePollAt) : 'Ingen planerad');
   text('request-count', number(data.requestCount)); text('failure-count', number(data.requestFailures));
   text('rate-limit-count', number(data.rateLimitedResponses));
   text('average-duration', data.averageDurationMs == null ? '—' : number(Math.round(data.averageDurationMs)) + ' ms');
@@ -31,6 +33,21 @@ function render(data) {
     }); rows.append(row);
   }
   if (!data.recentRequests.length) { const row = document.createElement('tr'); const cell = document.createElement('td'); cell.colSpan = 4; cell.className = 'empty'; cell.textContent = 'Inga registrerade anrop ännu.'; row.append(cell); rows.append(row); }
+  const responses = data.vehicleResponses ?? [];
+  const responseVersion = JSON.stringify(responses);
+  if (responseVersion !== lastResponses) {
+    lastResponses = responseVersion;
+    const container = document.getElementById('vehicle-responses'); container.replaceChildren();
+    for (const response of responses) {
+      const heading = document.createElement('h3'); heading.textContent = (response.model ?? 'Hyundai') + ' · hämtat ' + date(response.receivedAt);
+      const pre = document.createElement('pre'); const code = document.createElement('code');
+      code.textContent = JSON.stringify(response.response, null, 2); pre.append(code);
+      container.append(heading, pre);
+    }
+    if (!responses.length) {
+      const message = document.createElement('p'); message.className = 'empty'; message.textContent = 'Inväntar första statussvaret.'; container.append(message);
+    }
+  }
   text('live-status', 'Uppdaterad ' + date(data.observedAt));
   document.getElementById('live-status').classList.remove('error');
   document.getElementById('connection-error').hidden = true;
