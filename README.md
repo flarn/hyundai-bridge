@@ -22,7 +22,7 @@ HACS installs only `custom_components/hyundai_bridge`; the .NET bridge remains a
 
 For manual installation, copy `custom_components/hyundai_bridge` into your HA configuration's `custom_components` directory and restart. Each vehicle gets one Hyundai device with native entities according to its advertised capabilities. No MQTT entities or MQTT entity discovery payloads are used.
 
-See [installation and tests](docs/home-assistant.md) and the [MQTT v1 contract](docs/mqtt-v1.md). The integration was tested with HA 2026.9.4. Current real state includes battery, 12-V battery, range, odometer, charging, plugged-in and six opening states. Writable entities require verified command capabilities; Hyundai remote commands are not yet implemented or advertised.
+See [installation and tests](docs/home-assistant.md) and the [MQTT v1 contract](docs/mqtt-v1.md). The integration was tested with HA 2026.9.4. Current real state includes battery, 12-V battery, range, odometer, charging, plugged-in, eight opening states, charging power/time and vehicle observation time. Writable entities require verified command capabilities; Hyundai remote commands are not yet implemented or advertised.
 
 ```sh
 python3.14 -m venv .venv

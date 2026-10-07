@@ -53,6 +53,8 @@ public sealed class VehicleStateTests
         Assert.Null(state.VehicleUpdatedAt); Assert.Null(state.Latitude); Assert.Null(state.Longitude);
         Assert.Null(state.AuxiliaryBatteryPercent); Assert.Null(state.IsFrontLeftDoorOpen);
         Assert.Null(state.IsTrunkOpen); Assert.Null(state.IsHoodOpen);
+        Assert.Null(state.IsChargePortOpen); Assert.Null(state.IsSunroofOpen);
+        Assert.Null(state.ChargingPowerKw); Assert.Null(state.RemainingChargeTimeMinutes);
     }
 
     [Fact]
@@ -90,11 +92,73 @@ public sealed class VehicleStateTests
         Assert.Throws<FormatException>(() => HyundaiBridge.Mqtt.Contract.ValidateState(state with { AuxiliaryBatteryPercent = 101 }));
     }
 
-    [Fact]
-    public void ObservedFractionalSocNormalizesToTheStableWholePercentContract()
+    [Theory]
+    [InlineData(80.5, 80)]
+    [InlineData(79.9, 79)]
+    [InlineData(100, 100)]
+    public void FractionalSocUsesWholePercentageWithoutRoundingUp(double ratio, int expected)
     {
-        using var document = JsonDocument.Parse(Payload.Replace("\"Ratio\":73", "\"Ratio\":80.5"));
-        Assert.Equal(81, VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow).BatteryPercent);
+        using var document = JsonDocument.Parse(Payload.Replace("\"Ratio\":73", "\"Ratio\":" + ratio.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        Assert.Equal(expected, VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow).BatteryPercent);
+    }
+
+    [Theory]
+    [InlineData(1, 300)]
+    [InlineData(2, 482.8032)]
+    [InlineData(3, 482.8032)]
+    public void RangeUsesDeclaredUnit(int unit, double expected)
+    {
+        using var document = JsonDocument.Parse(Payload.Replace("\"Total\":300,\"Unit\":1", "\"Total\":300,\"Unit\":" + unit));
+        Assert.Equal(expected, VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow).EstimatedRangeKm!.Value, 6);
+    }
+
+    [Fact]
+    public void UnknownRangeUnitDoesNotInventKilometers()
+    {
+        using var document = JsonDocument.Parse(Payload.Replace("\"Total\":300,\"Unit\":1", "\"Total\":300,\"Unit\":255"));
+        Assert.Null(VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow).EstimatedRangeKm);
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(2, false)]
+    [InlineData(255, null)]
+    public void ChargePortUsesVerifiedStates(int code, bool? expected)
+    {
+        using var document = JsonDocument.Parse("{\"state\":{\"Vehicle\":{\"Green\":{\"ChargingDoor\":{\"State\":" + code + "}}}}}");
+        Assert.Equal(expected, VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow).IsChargePortOpen);
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(2, null)]
+    public void SunroofUsesOnlyVerifiedOpenCodes(int code, bool? expected)
+    {
+        using var document = JsonDocument.Parse("{\"state\":{\"Vehicle\":{\"Body\":{\"Sunroof\":{\"Glass\":{\"Open\":" + code + "}}}}}}");
+        Assert.Equal(expected, VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow).IsSunroofOpen);
+    }
+
+    [Theory]
+    [InlineData(58.7, 25)]
+    [InlineData(0, 0)]
+    [InlineData(-1, -1)]
+    public void ChargingMeasurementsKeepUnitsAndRejectSentinels(double power, double minutes)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new { state = new { Vehicle = new {
+            Green = new { Electric = new { SmartGrid = new { RealTimePower = power } },
+                ChargingInformation = new { Charging = new { RemainTime = minutes } } }
+        } } });
+        using var document = JsonDocument.Parse(json);
+        var state = VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow);
+        Assert.Equal(power >= 0 ? power : (double?)null, state.ChargingPowerKw);
+        Assert.Equal(minutes >= 0 ? minutes : (double?)null, state.RemainingChargeTimeMinutes);
+        using var normalized = JsonDocument.Parse(HyundaiBridge.Mqtt.Contract.Serialize(state));
+        if (power >= 0) Assert.Equal(power, normalized.RootElement.GetProperty("chargingPowerKw").GetDouble());
+        else Assert.Equal(JsonValueKind.Null, normalized.RootElement.GetProperty("chargingPowerKw").ValueKind);
+        Assert.Throws<FormatException>(() => HyundaiBridge.Mqtt.Contract.ValidateState(state with { ChargingPowerKw = -1 }));
+        Assert.Throws<FormatException>(() => HyundaiBridge.Mqtt.Contract.ValidateState(state with { RemainingChargeTimeMinutes = -1 }));
     }
 
     [Theory]

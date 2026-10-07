@@ -182,6 +182,8 @@ public sealed class BrokerTests
             using var manifest = JsonDocument.Parse(received["hyundai/v1/bridges/home/manifest"].Payload);
             var caps = manifest.RootElement.GetProperty("vehicles")[0].GetProperty("capabilities");
             Assert.Contains("batteryPercent", caps.GetProperty("stateFields").EnumerateArray().Select(x => x.GetString()));
+            Assert.Contains("vehicleUpdatedAt", caps.GetProperty("stateFields").EnumerateArray().Select(x => x.GetString()));
+            Assert.DoesNotContain("bridgeUpdatedAt", caps.GetProperty("stateFields").EnumerateArray().Select(x => x.GetString()));
             Assert.Empty(caps.GetProperty("commands").EnumerateArray());
             using var state = JsonDocument.Parse(received["hyundai/v1/example-ev/state"].Payload);
             Assert.Equal(JsonValueKind.Null, state.RootElement.GetProperty("batteryPercent").ValueKind);

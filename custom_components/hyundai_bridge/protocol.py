@@ -9,6 +9,8 @@ from typing import Any
 
 TOPIC_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 BOOLEAN_FIELDS = {
+    "isChargePortOpen",
+    "isSunroofOpen",
     "isCharging",
     "isPluggedIn",
     "isLocked",
@@ -28,6 +30,8 @@ PERCENT_FIELDS = {
     "dcChargeLimitPercent",
 }
 NUMBER_FIELDS = {
+    "chargingPowerKw",
+    "remainingChargeTimeMinutes",
     "estimatedRangeKm",
     "odometerKm",
     "cabinTemperatureCelsius",
@@ -182,6 +186,9 @@ def parse_state(payload: str | bytes, vehicle: VehicleInfo) -> dict[str, Any]:
     for field in ("odometerKm", "estimatedRangeKm"):
         if data.get(field) is not None and data[field] < 0:
             raise ValueError("Invalid distance state")
+    for field in ("chargingPowerKw", "remainingChargeTimeMinutes"):
+        if data.get(field) is not None and data[field] < 0:
+            raise ValueError("Invalid charging measurement")
     for field, maximum in (("latitude", 90), ("longitude", 180)):
         if data.get(field) is not None and abs(data[field]) > maximum:
             raise ValueError("Invalid coordinates")

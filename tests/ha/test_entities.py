@@ -204,3 +204,49 @@ async def test_auxiliary_battery_and_openings_are_native_nullable_entities(
     await send(hass, "state", {**vehicle_state, **dict.fromkeys(fields)})
     for entity_id in entity_ids.values():
         assert hass.states.get(entity_id).state == "unknown"
+
+
+async def test_charging_openings_and_source_timestamp_are_native_entities(
+    hass, bridge, manifest, vehicle_state
+):
+    fields = {
+        "isChargePortOpen": True,
+        "isSunroofOpen": False,
+        "chargingPowerKw": 58.7,
+        "remainingChargeTimeMinutes": 25,
+        "vehicleUpdatedAt": "2026-10-07T18:00:00Z",
+    }
+    manifest["vehicles"][0]["capabilities"]["stateFields"].extend(fields)
+    await announce(hass, manifest)
+    await send(hass, "state", {**vehicle_state, **fields})
+    registry = er.async_get(hass)
+    expected = {
+        "isChargePortOpen": ("binary_sensor", "on", "opening", None),
+        "isSunroofOpen": ("binary_sensor", "off", "window", None),
+        "chargingPowerKw": ("sensor", "58.7", "power", "kW"),
+        "remainingChargeTimeMinutes": ("sensor", "25", "duration", "min"),
+        "vehicleUpdatedAt": ("sensor", "2026-10-07T18:00:00+00:00", "timestamp", None),
+    }
+    entity_ids = {}
+    for field, (domain, value, device_class, unit) in expected.items():
+        entity_ids[field] = registry.async_get_entity_id(
+            domain, "hyundai_bridge", "KMH00000000000001_" + field
+        )
+        state = hass.states.get(entity_ids[field])
+        assert state.state == value
+        assert state.attributes["device_class"] == device_class
+        assert state.attributes.get("unit_of_measurement") == unit
+    entries = er.async_entries_for_config_entry(registry, bridge.entry_id)
+    assert len({entry.device_id for entry in entries}) == 1
+    # Retrieving the same cached observation later must not advance its source time.
+    await send(
+        hass,
+        "state",
+        {**vehicle_state, **fields, "bridgeUpdatedAt": "2026-10-07T20:00:00Z"},
+    )
+    timestamp = hass.states.get(entity_ids["vehicleUpdatedAt"])
+    assert timestamp.state == "2026-10-07T18:00:00+00:00"
+    assert timestamp.attributes["bridge_updated_at"] == "2026-10-07T20:00:00Z"
+    await send(hass, "state", {**vehicle_state, **dict.fromkeys(fields)})
+    for entity_id in entity_ids.values():
+        assert hass.states.get(entity_id).state == "unknown"

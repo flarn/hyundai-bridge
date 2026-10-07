@@ -89,3 +89,37 @@ response as formatted JSON for each model. It reads an in-memory, redacted copy:
 extra Hyundai request, no raw authentication response, no exact location or vehicle/
 account identifiers. A failed later read retains the last successful response with
 its retrieval time. JSON rendering uses text content and does not interpret HTML.
+
+## Requested charge port, sunroof, charging measurements and source-time sensor
+
+A later cached observation at 19:07:02 UTC reported current range 363 with unit 1
+(km); target-charge range Standard/Quick was 403. These are different measurements.
+The adapter keeps current DTE and converts only declared miles (unit 2/3) to km.
+No conversion is added to unit 1 to imitate an app value of approximately 400 km.
+
+The app showed 80% while the stored traction SoC was 80.5. The previous rounding
+policy shown above produced 81%; it is now truncated to the whole percentage (80).
+This matches this observation, without claiming the app's policy for every model.
+
+`Green.ChargingDoor.State` maps 0/2 to closed, 1 to open, others to unknown,
+following the inspected community parser. The real value was 2.
+`Body.Sunroof.Glass.Open` uses only boolean/0/1; the real value was 0.
+Unverified tilt codes do not become an invented open/closed state.
+
+The same upstream implementation maps `Green.Electric.SmartGrid.RealTimePower`
+to charging power in kW (`Vehicle.ev_charging_power`) and
+`Green.ChargingInformation.Charging.RemainTime` to minutes remaining in the active
+session. These become nullable `chargingPowerKw` and `remainingChargeTimeMinutes`.
+The real parked observation reports zero for both. Positive charging measurements
+are covered by synthetic mapping tests but have not yet been verified while this
+vehicle is charging. EstimatedTime by charger type and ElectricCurrentLevel settings
+are not substituted for actual power or remaining time.
+
+HA now exposes `vehicleUpdatedAt` as a native timestamp sensor when advertised.
+Later retrievals of the same cached data do not advance it. Bridge retrieval time
+remains a separate attribute. Raw lights currently contain warnings and turn-signal
+fields; the user requested belysning on/off, so no warning entities were added.
+Ordinary headlamp on/off semantics remain unverified.
+
+Source: [Hyundai-Kia-Connect EU adapter](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/daca6876e98d33815b8c7611fc38f5ec24c8355a/hyundai_kia_connect_api/GspaApiEU.py)
+and [normalized upstream Vehicle units](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/daca6876e98d33815b8c7611fc38f5ec24c8355a/hyundai_kia_connect_api/Vehicle.py).

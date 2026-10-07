@@ -43,6 +43,15 @@
       },
       "auxiliary_battery": {
         "name": "12 V battery"
+      },
+      "vehicle_updated_at": {
+        "name": "Vehicle status updated"
+      },
+      "charging_power": {
+        "name": "Charging power"
+      },
+      "remaining_charge_time": {
+        "name": "Remaining charge time"
       }
     },
     "binary_sensor": {
@@ -69,6 +78,12 @@
       },
       "hood": {
         "name": "Hood"
+      },
+      "charge_port": {
+        "name": "Charge port"
+      },
+      "sunroof": {
+        "name": "Sunroof"
       }
     },
     "number": {

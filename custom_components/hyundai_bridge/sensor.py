@@ -1,16 +1,43 @@
 """Native sensors backed by advertised normalized measurements."""
 
+from datetime import datetime
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, UnitOfLength, UnitOfTemperature
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfLength,
+    UnitOfPower,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 
 from .entity import BridgeEntity, setup_entities
 
 DESCRIPTIONS = (
+    SensorEntityDescription(
+        key="vehicleUpdatedAt",
+        translation_key="vehicle_updated_at",
+        device_class=SensorDeviceClass.TIMESTAMP,
+    ),
+    SensorEntityDescription(
+        key="chargingPowerKw",
+        translation_key="charging_power",
+        device_class=SensorDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="remainingChargeTimeMinutes",
+        translation_key="remaining_charge_time",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
     SensorEntityDescription(
         key="batteryPercent",
         translation_key="battery",
@@ -75,4 +102,7 @@ class VehicleSensor(BridgeEntity, SensorEntity):
 
     @property
     def native_value(self):
-        return self.state_data.get(self.entity_description.key)
+        value = self.state_data.get(self.entity_description.key)
+        if self.entity_description.device_class == SensorDeviceClass.TIMESTAMP:
+            return datetime.fromisoformat(value) if value is not None else None
+        return value

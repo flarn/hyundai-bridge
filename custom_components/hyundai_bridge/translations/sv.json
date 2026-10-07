@@ -43,6 +43,15 @@
       },
       "auxiliary_battery": {
         "name": "12-voltsbatteri"
+      },
+      "vehicle_updated_at": {
+        "name": "Bilstatus uppdaterad"
+      },
+      "charging_power": {
+        "name": "Laddeffekt"
+      },
+      "remaining_charge_time": {
+        "name": "Återstående laddtid"
       }
     },
     "binary_sensor": {
@@ -69,6 +78,12 @@
       },
       "hood": {
         "name": "Motorhuv"
+      },
+      "charge_port": {
+        "name": "Laddlucka"
+      },
+      "sunroof": {
+        "name": "Soltak"
       }
     },
     "number": {

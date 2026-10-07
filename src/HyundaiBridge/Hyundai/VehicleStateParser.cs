@@ -27,14 +27,18 @@ internal static class VehicleStateParser
         return new VehicleState
         {
             VehicleId = vehicle.VehicleId, Vin = vehicle.Vin,
-            // v1 uses whole percentages; round fractional SoC without treating it as unsupported.
+            // v1 uses whole percentages; omit the fractional part, matching the observed app display.
             BatteryPercent = Number(At(state, "Green.BatteryManagement.BatteryRemain.Ratio")) is >= 0 and <= 100 and var soc
-                ? (int)Math.Round(soc, MidpointRounding.AwayFromZero) : null,
+                ? (int)Math.Truncate(soc) : null,
             AuxiliaryBatteryPercent = Percent(At(state, "Electronics.Battery.Level")),
             EstimatedRangeKm = range >= 0 ? range : null,
             IsCharging = remaining >= 0 ? remaining > 0 : null,
             IsPluggedIn = Bool(At(state, "Green.ChargingInformation.ConnectorFastening.State")),
             IsLocked = locked,
+            IsChargePortOpen = Number(At(state, "Green.ChargingDoor.State")) switch { 0 or 2 => false, 1 => true, _ => null },
+            IsSunroofOpen = Bool(At(state, "Body.Sunroof.Glass.Open")),
+            ChargingPowerKw = Number(At(state, "Green.Electric.SmartGrid.RealTimePower")) is >= 0 and var power ? power : null,
+            RemainingChargeTimeMinutes = remaining >= 0 ? remaining : null,
             IsFrontLeftDoorOpen = Bool(At(state, "Cabin.Door.Row1.Driver.Open")),
             IsFrontRightDoorOpen = Bool(At(state, "Cabin.Door.Row1.Passenger.Open")),
             IsRearLeftDoorOpen = Bool(At(state, "Cabin.Door.Row2.Left.Open")),

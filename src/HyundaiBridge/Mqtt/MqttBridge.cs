@@ -111,7 +111,7 @@ internal sealed class MqttBridge : IDisposable
             using var document = System.Text.Json.JsonDocument.Parse(Contract.Serialize(state));
             var fields = document.RootElement.EnumerateObject()
                 .Where(p => p.Value.ValueKind != System.Text.Json.JsonValueKind.Null &&
-                    p.Name is not ("vehicleId" or "vin" or "vehicleUpdatedAt" or "bridgeUpdatedAt"))
+                    p.Name is not ("vehicleId" or "vin" or "bridgeUpdatedAt"))
                 .Select(p => p.Name).Union(info.Capabilities.StateFields).ToArray();
             vehicles[state.VehicleId] = info with { Capabilities = info.Capabilities with { StateFields = fields } };
             CacheState(state);

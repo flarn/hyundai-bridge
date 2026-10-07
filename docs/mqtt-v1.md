@@ -29,6 +29,8 @@ The initial scalar fields are those in `contract/examples/state.json`: battery p
 
 Optional additive v1 fields: `auxiliaryBatteryPercent` (integer 0–100, 12-V battery state of charge), and the booleans `isFrontLeftDoorOpen`, `isFrontRightDoorOpen`, `isRearLeftDoorOpen`, `isRearRightDoorOpen`, `isTrunkOpen`, `isHoodOpen`. True means open, false closed, null/absent unknown. They create a native battery sensor and six opening binary sensors only when advertised. Existing consumers can ignore these additions; no major version or identity changes are required.
 
+Additional optional fields are `isChargePortOpen` and `isSunroofOpen` (true open, false closed), `chargingPowerKw` (nonnegative kW) and `remainingChargeTimeMinutes` (nonnegative minutes remaining in the current charging session). Zero is a reported value; absent/null is unknown. These create opening/window, power and duration entities only when advertised. `vehicleUpdatedAt` can also be advertised for a native timestamp sensor; it uses the vehicle observation time, never `bridgeUpdatedAt`. Existing v1 consumers can ignore additive fields.
+
 ## Commands
 
 Each command carries a new UUID `commandId`. No optimistic state updates are performed.

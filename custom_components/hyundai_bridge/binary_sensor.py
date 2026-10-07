@@ -10,6 +10,16 @@ from .entity import BridgeEntity, setup_entities
 
 DESCRIPTIONS = (
     BinarySensorEntityDescription(
+        key="isChargePortOpen",
+        translation_key="charge_port",
+        device_class=BinarySensorDeviceClass.OPENING,
+    ),
+    BinarySensorEntityDescription(
+        key="isSunroofOpen",
+        translation_key="sunroof",
+        device_class=BinarySensorDeviceClass.WINDOW,
+    ),
+    BinarySensorEntityDescription(
         key="isCharging",
         translation_key="charging",
         device_class=BinarySensorDeviceClass.BATTERY_CHARGING,

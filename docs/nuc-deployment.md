@@ -238,7 +238,7 @@ credentials, port mapping and persistent volume, then redeploy only this project
 Copy the repository's `compose.yaml` into the stack directory. Create an owner-only `.env` (0600) with the existing MQTT broker connection and Hyundai credentials, following `.env.example`. Set:
 
 ```text
-HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:15edd6f4662a09cffe3401fa08c5a8a13dc31fa3815eabf2b399e5d0a6956c53
+HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:9c56d106ac65feee8b4a2d1ce652284b6479e572bdee21f9b950ce3963a0e401
 BRIDGE_ID=home
 ```
 
@@ -267,3 +267,32 @@ sudo docker compose stop hyundai-bridge
 ```
 
 Keep the volume and secret configuration. Do not remove volumes or change unrelated services. HA custom integration installation is a separate deployment step; its existing source is `custom_components/hyundai_bridge`.
+
+## Charge status and source timestamp deployment — 2026-10-07
+
+Image `registry.local/hyundai-bridge:20261007-charge-status`, pinned as
+`registry.local/hyundai-bridge@sha256:9c56d106ac65feee8b4a2d1ce652284b6479e572bdee21f9b950ce3963a0e401`,
+was deployed through the existing Arcane project, preserving credentials, volume,
+read-only filesystem and LAN port. The container started at 19:21:50 UTC and
+retrieved stored status at 19:21:51 UTC: one vehicle, MQTT connected, API reachable,
+zero failures, stored session reused with zero login/renewal requests. Discovery
+is finished (`nextPollAt=null`), next cached state read is 19:31:51 UTC.
+
+A temporary MQTT-only observer verified retained state/manifest/availability from
+the production broker. Battery 80%, auxiliary battery 81%, current range 406 km,
+charge port closed, sunroof closed, charging power 0 kW and remaining time 0 minutes.
+Source observation time 18:01:24 UTC and bridge retrieval time 19:21:51 UTC are
+separate. Manifest advertises these five additional native HA fields, commands
+remain empty and data freshness remains unknown. No vehicle control/wake command
+was sent. The observer was removed and its transfer server stopped.
+
+Validation: 99 .NET tests passed with the disposable broker (one HA-companion
+check skipped in that run), 65 HA tests passed, and both optional real-broker/HA
+pipeline tests passed separately. Python lint and focused diff checks passed.
+The HA component version is 0.3.0; download/update through HACS and restart HA.
+The new native entity mapping is tested with HA's actual platforms and registries,
+but the production HA component was not upgraded or inspected in this step.
+Positive charging values remain to be verified while the real vehicle is charging.
+
+Rollback: restore the preceding `15edd6f4…` image digest and redeploy only this
+project, preserving its data volume and secret configuration.

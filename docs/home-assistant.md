@@ -2,7 +2,7 @@
 
 `custom_components/hyundai_bridge` consumes the [MQTT v1 contract](mqtt-v1.md) and exposes native Home Assistant entities. Tested with Home Assistant **2026.9.4** and Python 3.14.6. No Hyundai account, tokens, endpoint knowledge or Python Hyundai library is present in HA.
 
-**Current delivery:** the HA consumer works against a v1 producer. The .NET service authenticates, discovers a linked vehicle and retrieves cached Hyundai state every ten minutes without waking the vehicle. It also publishes auxiliary battery and six opening fields when observed. Hyundai remote controls remain pending and unadvertised. HA entity verification uses synthetic data; production installation of the HA component is a separate deployment step.
+**Current delivery:** the HA consumer works against a v1 producer. The .NET service authenticates, discovers a linked vehicle and retrieves cached Hyundai state every ten minutes without waking the vehicle. It also publishes auxiliary battery, eight opening fields, charging power/time and source observation time when observed. Hyundai remote controls remain pending and unadvertised. HA entity verification uses synthetic data; production installation of the HA component is a separate deployment step.
 
 ## Install
 
@@ -38,7 +38,7 @@ This is custom integration discovery through the bridge manifest, not MQTT entit
 
 ## Entities and dashboard
 
-Entities appear only for advertised capabilities. Supported scope: battery, 12-V battery, range, odometer, charging, plugged-in, four doors, trunk, hood, lock, climate, AC/DC charge limits, refresh/start-charging/stop-charging buttons, GPS tracker and optional measured cabin/outside temperature. A vehicle without EV capability does not receive EV controls. No custom frontend card is required.
+Entities appear only for advertised capabilities. Supported scope: battery, 12-V battery, range, odometer, charging, plugged-in, four doors, trunk, hood, charge port, sunroof, charging power (kW), remaining charging time (minutes), vehicle status timestamp, lock, climate, AC/DC charge limits, refresh/start-charging/stop-charging buttons, GPS tracker and optional measured cabin/outside temperature. A vehicle without EV capability does not receive EV controls. No custom frontend card is required.
 
 Use standard Tile cards for battery/range, lock, charge limits, charging status and buttons; use HA's standard climate card or climate Tile features for remote temperature control. Entity names are translated into English and Swedish. Vehicle names come from metadata, so the integration works across Hyundai models.
 

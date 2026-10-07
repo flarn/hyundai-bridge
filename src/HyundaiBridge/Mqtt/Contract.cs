@@ -98,6 +98,8 @@ internal static partial class Contract
             if (distance < 0) throw new FormatException("Invalid normalized distance");
         if (state.Latitude is { } lat && Math.Abs(lat) > 90 || state.Longitude is { } lon && Math.Abs(lon) > 180)
             throw new FormatException("Invalid normalized coordinates");
+        foreach (var measurement in new[] { state.ChargingPowerKw, state.RemainingChargeTimeMinutes })
+            if (measurement < 0) throw new FormatException("Invalid normalized charging measurement");
         // Serialization refuses NaN/infinity; do it before replacing cache data.
         _ = Serialize(state);
     }

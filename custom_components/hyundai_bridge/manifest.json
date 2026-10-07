@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/flarn/hyundai-bridge/issues",
   "mqtt": ["hyundai/v1/bridges/+/manifest"],
   "requirements": [],
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

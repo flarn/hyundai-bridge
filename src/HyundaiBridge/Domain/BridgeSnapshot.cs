@@ -23,6 +23,10 @@ internal sealed record VehicleState
     public bool? IsCharging { get; init; }
     public bool? IsPluggedIn { get; init; }
     public bool? IsLocked { get; init; }
+    public bool? IsChargePortOpen { get; init; }
+    public bool? IsSunroofOpen { get; init; }
+    public double? ChargingPowerKw { get; init; }
+    public double? RemainingChargeTimeMinutes { get; init; }
     public bool? IsFrontLeftDoorOpen { get; init; }
     public bool? IsFrontRightDoorOpen { get; init; }
     public bool? IsRearLeftDoorOpen { get; init; }
