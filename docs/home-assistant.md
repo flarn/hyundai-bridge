@@ -6,6 +6,29 @@
 
 ## Install
 
+### HACS
+
+The public GitHub repository includes root `hacs.json` metadata and a single
+integration under `custom_components/hyundai_bridge`.
+
+1. Open **HACS → ⋮ → Custom repositories**.
+2. Add `https://github.com/flarn/hyundai-bridge` with type **Integration**.
+3. Download **Hyundai Bridge** from HACS and restart Home Assistant.
+4. Configure HA's MQTT integration for the same broker as the bridge.
+5. Confirm the discovered **Hyundai Bridge** under **Settings → Devices & services**,
+   or add it manually with bridge identifier `home`.
+
+Only the HA component is installed by HACS; the .NET Docker service stays on its
+existing host. No Hyundai credentials are configured in HA. With no GitHub releases,
+HACS downloads/tracks the default branch. A new download/update requires restarting
+HA to load changed integration code.
+
+References: [HACS custom repositories](https://www.hacs.dev/docs/faq/custom_repositories/),
+[integration layout](https://www.hacs.dev/docs/publish/integration/),
+[private repository limitation](https://www.hacs.dev/docs/faq/private_repositories/).
+
+### Manual installation
+
 1. Copy `custom_components/hyundai_bridge` into `<HA config>/custom_components/hyundai_bridge`, preserving its files and translations. Restart Home Assistant.
 2. Configure HA's standard MQTT integration for the broker the .NET bridge will use. Hyundai credentials belong exclusively in the .NET service.
 3. With a v1 bridge publishing its retained manifest, **Settings → Devices & services** shows **Hyundai Bridge** as discovered. Confirm it. Alternatively, choose **Add integration → Hyundai Bridge** and enter the bridge identifier (`home` in the contract example).
@@ -15,7 +38,7 @@ This is custom integration discovery through the bridge manifest, not MQTT entit
 
 ## Entities and dashboard
 
-Entities appear only for advertised capabilities. Supported scope: battery, range, odometer, charging, plugged-in, lock, climate, AC/DC charge limits, refresh/start-charging/stop-charging buttons, GPS tracker and optional measured cabin/outside temperature. A vehicle without EV capability does not receive EV controls. This version adds no door sensors or custom frontend card.
+Entities appear only for advertised capabilities. Supported scope: battery, 12-V battery, range, odometer, charging, plugged-in, four doors, trunk, hood, lock, climate, AC/DC charge limits, refresh/start-charging/stop-charging buttons, GPS tracker and optional measured cabin/outside temperature. A vehicle without EV capability does not receive EV controls. No custom frontend card is required.
 
 Use standard Tile cards for battery/range, lock, charge limits, charging status and buttons; use HA's standard climate card or climate Tile features for remote temperature control. Entity names are translated into English and Swedish. Vehicle names come from metadata, so the integration works across Hyundai models.
 

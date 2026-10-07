@@ -4,15 +4,25 @@ Hyundai EU / MyHyundai → .NET → versioned MQTT → native Home Assistant cus
 
 Hyundai integration for supported European vehicles generally. Model names, VINs and capabilities come from the backend; IONIQ 9 is one intended verification vehicle.
 
-**Status:** EU authentication/discovery and the Home Assistant custom integration are implemented. Live login, session reuse and CCI token renewal were verified on 2026-10-06. The account has no linked vehicle yet. At the user's request, development continued from the HA side: native entities, Config Flow, versioned state consumption and correlated commands are tested against synthetic contract data. The .NET MQTT producer, command transport, outage cache, polling/backoff and Docker service are now implemented. Real vehicle state and physical commands remain pending; this is not yet a working end-to-end car connection.
+**Status:** the .NET service authenticates against MyHyundai EU, discovers a linked vehicle and publishes real cached vehicle state every ten minutes without waking the vehicle. Its Docker deployment and retained MQTT output have been verified. The Home Assistant custom integration exposes native entities and is tested against synthetic contract data. Production HA installation and Hyundai remote controls remain separate, unverified steps.
 
 See [API research](docs/myhyundai-eu-api.md) and [implementation/verification plan](docs/implementation-plan.md).
 
 ## Home Assistant
 
-Install `custom_components/hyundai_bridge` into your HA configuration's `custom_components` directory and restart. With the existing HA MQTT integration configured, a v1 bridge manifest discovers **Hyundai Bridge** through Config Flow. Each vehicle gets one Hyundai device with native sensors, binary sensors, lock, climate, numbers, buttons and tracker according to its advertised capabilities. No MQTT entities or MQTT entity discovery payloads are used.
+Install through HACS using this public GitHub repository:
 
-See [installation and tests](docs/home-assistant.md) and the [MQTT v1 contract](docs/mqtt-v1.md). The integration was tested with HA 2026.9.4. It does not require Hyundai credentials. The .NET producer advertises only implemented capabilities: discovery currently has no state/control features, so installation alone cannot supply live car data yet.
+1. Open **HACS → ⋮ → Custom repositories**.
+2. Add `https://github.com/flarn/hyundai-bridge`, type **Integration**.
+3. Find **Hyundai Bridge** in HACS and download it, then restart Home Assistant.
+4. Ensure HA's existing MQTT integration connects to the same broker as the .NET bridge.
+5. In **Settings → Devices & services**, configure the discovered **Hyundai Bridge**. Alternatively, add the integration manually with bridge identifier `home`.
+
+HACS installs only `custom_components/hyundai_bridge`; the .NET bridge remains a separate Docker service. HACS tracks the default branch until GitHub releases are published. No Hyundai credentials belong in HA.
+
+For manual installation, copy `custom_components/hyundai_bridge` into your HA configuration's `custom_components` directory and restart. Each vehicle gets one Hyundai device with native entities according to its advertised capabilities. No MQTT entities or MQTT entity discovery payloads are used.
+
+See [installation and tests](docs/home-assistant.md) and the [MQTT v1 contract](docs/mqtt-v1.md). The integration was tested with HA 2026.9.4. Current real state includes battery, 12-V battery, range, odometer, charging, plugged-in and six opening states. Writable entities require verified command capabilities; Hyundai remote commands are not yet implemented or advertised.
 
 ```sh
 python3.14 -m venv .venv
