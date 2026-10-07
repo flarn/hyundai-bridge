@@ -12,7 +12,7 @@ function render(data) {
   pill('mqtt-pill', data.mqttConnected ? 'Ansluten' : 'Frånkopplad', data.mqttConnected);
   text('mqtt-title', data.mqttConnected ? 'Transport ansluten' : 'Transport frånkopplad');
   text('last-success', date(data.lastSuccessAt));
-  text('next-poll', data.nextPollAt ? date(data.nextPollAt) : data.lastSuccessAt ? 'Ingen planerad' : 'Inväntar uppstart');
+  text('next-poll', data.nextPollAt ? date(data.nextPollAt) : data.lastSuccessAt ? 'Ingen planerad' : data.lastFailureAt ? 'Stoppad · starta om bryggan' : 'Inväntar uppstart');
   text('request-count', number(data.requestCount)); text('failure-count', number(data.requestFailures));
   text('rate-limit-count', number(data.rateLimitedResponses));
   text('average-duration', data.averageDurationMs == null ? '—' : number(Math.round(data.averageDurationMs)) + ' ms');

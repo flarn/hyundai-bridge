@@ -45,8 +45,12 @@ internal sealed class BridgeWorker(MqttBridge mqtt, Func<CancellationToken, Task
             Schedule.Failed((error as HyundaiException)?.RetryAfter);
             statistics.PollScheduled(Schedule.DueAt);
             await mqtt.ApiFailedAsync(cancellationToken);
-            logger.LogWarning("Hyundai poll failed: {FailureType}; next attempt at {NextPoll}",
-                error.GetType().Name, Schedule.DueAt);
+            if (Schedule.DueAt is { } nextPoll)
+                logger.LogWarning("Hyundai poll failed: {FailureType}; next attempt at {NextPoll}",
+                    error.GetType().Name, nextPoll);
+            else
+                logger.LogWarning("Hyundai discovery stopped after five failed attempts: {FailureType}; restart the bridge to retry",
+                    error.GetType().Name);
         }
     }
 

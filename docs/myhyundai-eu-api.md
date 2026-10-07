@@ -54,7 +54,7 @@ There is no verified current published EU quota. The [community rate-limit wiki]
 
 Proposed bridge defaults for phase 3/7: cached reads every ten minutes, no automatic forced refresh, explicit refresh cooldown ten minutes. A single cached endpoint is preferable to pulling all upstream diagnostic/history feeds. Honor 429/Retry-After, back off outages, bound HTTP calls and command-result waits. Final aggregate request budget must include authentication and every vehicle; do not infer spare quota from a successful call. No polling behavior is implemented in phase 2.
 
-2026-10-07 latest clarification: retrieve the vehicle list at startup only, with existing backoff for startup failures until a successful response. An empty successful list also stops discovery until restart. The requested 60-second interval is for cached vehicle status once state retrieval is implemented. Earlier periodic-discovery behavior is superseded. Failure backoff and the ten-minute forced-refresh cooldown remain unchanged. The running adapter still retrieves discovery only, not vehicle state. Push is deferred.
+2026-10-07 latest clarification: retrieve the vehicle list at startup only, with existing backoff for startup failures and at most five discovery attempts in total. After five failures, restart the bridge to retry. An empty successful list also stops discovery until restart. The requested 60-second interval is for cached vehicle status once state retrieval is implemented. Earlier periodic-discovery behavior is superseded. Failure backoff and the ten-minute forced-refresh cooldown remain unchanged. The running adapter still retrieves discovery only, not vehicle state. Push is deferred.
 
 ## Verification boundary
 

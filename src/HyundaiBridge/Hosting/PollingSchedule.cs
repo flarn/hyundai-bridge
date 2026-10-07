@@ -11,7 +11,8 @@ internal sealed class PollingSchedule(TimeProvider time)
     internal void Succeeded() { failures = 0; DueAt = null; }
     internal void Failed(TimeSpan? retryAfter = null)
     {
-        failures = Math.Min(failures + 1, 4);
+        failures++;
+        if (failures >= 5) { DueAt = null; return; }
         var delay = TimeSpan.FromMinutes(Math.Min(10 * Math.Pow(2, failures - 1), 60));
         if (retryAfter > delay) delay = retryAfter.Value;
         DueAt = time.GetUtcNow() + delay;

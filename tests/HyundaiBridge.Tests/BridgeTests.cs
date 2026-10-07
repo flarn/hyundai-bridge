@@ -95,11 +95,32 @@ public sealed class BridgeTests
         Assert.Equal(Timeout.InfiniteTimeSpan, schedule.Remaining);
         schedule.Failed(); Assert.Equal(TimeSpan.FromMinutes(10), schedule.Remaining);
         schedule.Failed(); Assert.Equal(TimeSpan.FromMinutes(20), schedule.Remaining);
-        schedule.Failed(); schedule.Failed(); Assert.Equal(TimeSpan.FromMinutes(60), schedule.Remaining);
+        schedule.Failed(); Assert.Equal(TimeSpan.FromMinutes(40), schedule.Remaining);
         schedule.Failed(TimeSpan.FromHours(3)); Assert.Equal(TimeSpan.FromHours(3), schedule.Remaining);
+        schedule.Failed();
+        Assert.Null(schedule.DueAt);
+        Assert.Equal(Timeout.InfiniteTimeSpan, schedule.Remaining);
         schedule.Succeeded();
         Assert.Null(schedule.DueAt);
         Assert.Equal(Timeout.InfiniteTimeSpan, schedule.Remaining);
+    }
+
+    [Fact]
+    public void DiscoveryStopsAfterFiveFailedAttemptsUntilRestart()
+    {
+        var clock = new FixedClock();
+        var schedule = new PollingSchedule(clock);
+        foreach (var minutes in new[] { 10, 20, 40, 60 })
+        {
+            schedule.Failed();
+            Assert.Equal(TimeSpan.FromMinutes(minutes), schedule.Remaining);
+            clock.Now += schedule.Remaining;
+        }
+        schedule.Failed(TimeSpan.FromHours(3));
+        Assert.Null(schedule.DueAt);
+        clock.Now += TimeSpan.FromDays(1);
+        Assert.Equal(Timeout.InfiniteTimeSpan, schedule.Remaining);
+        Assert.Equal(TimeSpan.Zero, new PollingSchedule(clock).Remaining);
     }
 
     [Theory]

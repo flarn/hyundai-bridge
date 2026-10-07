@@ -108,7 +108,7 @@ project, preserving credentials, port binding and data volume. That version also
 uses ten-minute discovery; the superseded minute-discovery image is not the
 recommended rollback.
 
-## Current release: startup-only discovery — 2026-10-07
+## Startup-only discovery (superseded retry policy) — 2026-10-07
 
 Vehicle discovery now runs at startup only. After a successful response, including
 an empty garage, no further list read is scheduled until the bridge restarts.
@@ -132,12 +132,37 @@ cadence is separate from discovery.
 Rollback: restore the previous ten-minute-discovery image digest (`56ca4365…`) and
 redeploy only this project. Preserve credentials, port binding and data volume.
 
+## Current release: at most five startup attempts — 2026-10-07
+
+Startup discovery is limited to five attempts in total (the initial attempt plus
+four retries). Failed attempts wait 10/20/40/60 minutes, or a longer Hyundai
+`Retry-After`. A fifth failure clears the next scheduled read; the bridge stays
+running with MQTT connected and must be restarted to retry discovery. Logs and
+the dashboard indicate that discovery has stopped. A successful response still
+stops further list reads immediately.
+
+```text
+registry.local/hyundai-bridge:20261007-discovery-5-attempts
+registry.local/hyundai-bridge@sha256:dc15ffa9ad87584f91b6ee2ae444ba8bce61b42478a51415884a4cafaca419e9
+```
+
+Deployed through Arcane by changing only the image digest. Startup at 17:53:41 UTC
+and discovery at 17:53:42 UTC returned one vehicle with HTTP 200, connected MQTT,
+zero errors and no next scheduled list read. The deployed dashboard shows the
+five-attempt limit. Local tests: 65 passed, two existing broker-dependent tests
+skipped without a test broker. Failure exhaustion was tested locally, not induced
+against the production Hyundai account.
+
+Rollback: restore the preceding startup-only image (`e77a6032…`), preserving
+credentials, port binding and persistent volume. Vehicle status and controls
+remain pending.
+
 ## Install on the Docker host
 
 Copy the repository's `compose.yaml` into the stack directory. Create an owner-only `.env` (0600) with the existing MQTT broker connection and Hyundai credentials, following `.env.example`. Set:
 
 ```text
-HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:e77a60324d720c58eb95bf2fddbdf6eddc6221491eaeaba6c160888b70593c42
+HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:dc15ffa9ad87584f91b6ee2ae444ba8bce61b42478a51415884a4cafaca419e9
 BRIDGE_ID=home
 ```
 
