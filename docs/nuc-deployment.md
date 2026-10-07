@@ -13,7 +13,20 @@ registry.local/hyundai-bridge:20261007-net11rc1-93a9bdf
 registry.local/hyundai-bridge@sha256:1f4606f9fd4d9ac17194b1063d7ed145aee34e460df1a628047925b8f15ef51b
 ```
 
-**Not deployed yet.** SSH for `anton@192.168.1.67` rejected the available key; the accessible Arcane manager on port 3552 requires login. Host resource capacity, existing MQTT connection settings and container startup must be checked through authenticated host access before claiming deployment success. No existing stack was changed.
+**Deployed through authenticated Arcane on 2026-10-07 at 06:28 UTC.** Project `hyundai-bridge`, directory `/opt/ha-bridges/hyundai-bridge`, container `hyundai-bridge-hyundai-bridge-1`. The production Compose file uses the digest above and omits `build`. It uses the existing MQTT broker; no broker or published port was added. No existing stack was changed or restarted.
+
+Verified on the NUC:
+
+- Exact published image, .NET `11.0.0-rc.1.26425.128`, user/group 1654, read-only root filesystem, `unless-stopped` restart policy.
+- `/data` permissions 0700 and `session.json` permissions 0600, both owned by 1654, in the persistent `hyundai-bridge_bridge-data` volume.
+- Real Hyundai authentication succeeded; discovery returned zero vehicles, as expected for the currently unlinked account.
+- A separate authenticated MQTT subscription received retained `hyundai/v1/bridges/home/availability = online` and the v1 manifest with an empty vehicle list. The bridge ID was unused before installation.
+- A controlled restart of only this container published `offline`, then `online`. Subsequent vehicle discovery succeeded without another authentication event, reusing the stored session.
+- Container memory was approximately 22–25 MB after startup/restart. All eight containers remained running.
+
+The HA custom integration has not been installed on the production HA instance in this deployment. Vehicle state and commands still require a linked-car acceptance test; deployment does not claim those features are verified.
+
+The project credentials are stored outside Git in Arcane's `.env`. Its host file permissions are not yet verified or tightened to 0600: the Arcane manager image has no `/bin/sh`. A narrowly scoped temporary helper to check/set these permissions is awaiting user approval. The private token-volume permissions above were verified inside the bridge container.
 
 ## Install on the Docker host
 
