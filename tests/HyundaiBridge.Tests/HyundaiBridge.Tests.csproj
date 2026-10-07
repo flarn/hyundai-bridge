@@ -12,4 +12,7 @@
     </PackageReference>
     <ProjectReference Include="../../src/HyundaiBridge/HyundaiBridge.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="../../contract/examples/*.json" Link="Contract/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

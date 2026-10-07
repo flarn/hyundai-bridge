@@ -1,0 +1,11 @@
+**/bin
+**/obj
+.git
+.venv
+.env*
+data
+secrets
+tests
+custom_components
+.pytest_cache
+.ruff_cache

@@ -1,0 +1,26 @@
+services:
+  hyundai-bridge:
+    build: .
+    image: hyundai-bridge:local
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp]
+    stop_grace_period: 20s
+    environment:
+      HYUNDAI_USERNAME: ${HYUNDAI_USERNAME:?Set HYUNDAI_USERNAME}
+      HYUNDAI_PASSWORD: ${HYUNDAI_PASSWORD:?Set HYUNDAI_PASSWORD}
+      HYUNDAI_REGION: EU
+      HYUNDAI_SESSION_DIRECTORY: /data
+      BRIDGE_ID: ${BRIDGE_ID:-home}
+      MQTT_HOST: ${MQTT_HOST:?Set MQTT_HOST to your existing broker}
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      MQTT_TLS: ${MQTT_TLS:-false}
+      MQTT_USERNAME: ${MQTT_USERNAME:-}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+    volumes:
+      - bridge-data:/data
+volumes:
+  bridge-data:

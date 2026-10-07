@@ -1,6 +1,10 @@
 using System.Net;
 using System.Text.Json;
+using HyundaiBridge.Hosting;
 using HyundaiBridge.Hyundai;
+using HyundaiBridge.Mqtt;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using var logs = LoggerFactory.Create(builder => builder.AddJsonConsole(options =>
@@ -9,13 +13,25 @@ using var logs = LoggerFactory.Create(builder => builder.AddJsonConsole(options 
     options.UseUtcTimestamp = true;
 }).AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace));
 var logger = logs.CreateLogger("HyundaiBridge");
-if (args.Length != 1 || args[0] != "--discover")
+if (args.Length > 1 || (args.Length == 1 && args[0] is not ("--discover" or "--serve")))
 {
-    logger.LogError("Usage: HyundaiBridge --discover");
+    logger.LogError("Usage: HyundaiBridge [--serve|--discover]");
     return 2;
 }
-var username = Environment.GetEnvironmentVariable("HYUNDAI_USERNAME");
-var password = Environment.GetEnvironmentVariable("HYUNDAI_PASSWORD");
+string? username, password;
+BridgeOptions? bridgeOptions = null;
+var discovery = args.Length == 1 && args[0] == "--discover";
+try
+{
+    username = BridgeOptions.Secret("HYUNDAI_USERNAME");
+    password = BridgeOptions.Secret("HYUNDAI_PASSWORD");
+    if (!discovery) bridgeOptions = BridgeOptions.FromEnvironment();
+}
+catch (Exception error) when (error is FormatException or IOException or UnauthorizedAccessException)
+{
+    logger.LogError("Invalid bridge configuration: {FailureType}; check environment and secret files", error.GetType().Name);
+    return 2;
+}
 var directory = Environment.GetEnvironmentVariable("HYUNDAI_SESSION_DIRECTORY");
 var region = Environment.GetEnvironmentVariable("HYUNDAI_REGION") ?? "EU";
 if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password) ||
@@ -36,6 +52,32 @@ using var client = new HyundaiClient(http, new SessionStore(directory), username
     logs.CreateLogger<HyundaiClient>(), TimeProvider.System);
 try
 {
+    if (!discovery)
+    {
+        if (OperatingSystem.IsWindows()) throw new IOException("Bridge storage requires macOS or Linux");
+        Directory.CreateDirectory(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        using var lease = new FileStream(Path.Combine(directory, "bridge.lock"), new FileStreamOptions
+        {
+            Mode = FileMode.OpenOrCreate,
+            Access = FileAccess.ReadWrite,
+            Share = FileShare.None,
+            UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite
+        });
+        var journal = new CommandJournal(directory);
+        await journal.LoadAsync(stopping.Token);
+        using var backendGate = new SemaphoreSlim(1, 1);
+        var processor = new CommandProcessor(journal, TimeProvider.System, backendGate, logs.CreateLogger<CommandProcessor>());
+        using var mqtt = new MqttBridge(bridgeOptions!, processor, logs.CreateLogger<MqttBridge>(), TimeProvider.System);
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddSingleton<ILoggerFactory>(logs);
+        builder.Services.Configure<HostOptions>(options => options.ShutdownTimeout = TimeSpan.FromSeconds(15));
+        builder.Services.AddSingleton<IHostedService>(new BridgeWorker(mqtt, client.GetBridgeSnapshotAsync,
+            backendGate, TimeProvider.System, logs.CreateLogger<BridgeWorker>()));
+        using var host = builder.Build();
+        await host.RunAsync(stopping.Token);
+        return 0;
+    }
     var vehicles = await client.GetVehiclesAsync(stopping.Token);
     Console.WriteLine(JsonSerializer.Serialize(vehicles, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true }));
     return vehicles.Count == 0 ? 4 : 0;

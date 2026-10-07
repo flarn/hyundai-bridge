@@ -10,7 +10,7 @@ The original Home Automation workspace contains scripts/configuration and fronte
 
 Only the adapter understands CCI/GSPA, tokens, stamps, PINs and backend DTOs. HA receives vehicle metadata, capabilities, nullable normalized state, timestamps, connectivity and correlated command results. Hyundai credentials never enter HA. MQTT Discovery is excluded.
 
-Planned MQTT topics are `hyundai/v1/{vehicleId}/state`, `/availability`, `/command/{action}` and `/command-result`, plus bridge availability/retained vehicle metadata for config flow. Commands are non-retained and carry a command id; serialize per vehicle, reject malformed or retained controls and deduplicate QoS redelivery. Command results materially improve correctness because Hyundai acceptance is asynchronous. Retained state must be republished after MQTT reconnect; use an offline Last Will.
+MQTT topics are `hyundai/v1/{vehicleId}/state`, `/availability`, `/command/{action}` and `/command-result`, plus bridge availability/retained vehicle metadata for config flow. Commands are non-retained and carry a command id; serialize per vehicle, reject malformed or retained controls and deduplicate QoS redelivery. Command results materially improve correctness because Hyundai acceptance is asynchronous. Retained state must be republished after MQTT reconnect; use an offline Last Will.
 
 The metadata/capability/availability schemas are now documented in [MQTT v1](mqtt-v1.md) and tested by the HA consumer. Unsupported fields stay null. Do not embed raw Hyundai field names, endpoint names or errors. Version-breaking changes require a new topic version.
 
@@ -23,10 +23,10 @@ On 2026-10-06 the user confirmed the vehicle is not linked yet and explicitly re
 | 1 | Current EU API note and plan | Source inspected at pinned commits; documented unknowns. Done. |
 | 2 | CCI password login, session persistence/refresh, normalized discovery | Live EU login, restart/session reuse and token renewal verified. Discovery returns zero vehicles; linked VIN/model acceptance remains pending. |
 | 3 | GSPA cryptography and cached normalized state | Read real data, verify units/null/sentinel mapping and vehicle/bridge timestamps. Not started. |
-| 4 | MQTT state/metadata/availability transport | v1 schema/fixtures and real Mosquitto HA-consumer bootstrap/reload verified. .NET publisher/Last Will implementation pending. |
+| 4 | MQTT state/metadata/availability transport | v1 schema/fixtures and real Mosquitto HA-consumer bootstrap/reload verified. .NET publisher/Last Will, reconnect and real broker verification implemented. Actual Hyundai state source remains pending. |
 | 5 | Config Flow and native HA platforms | Implemented and tested in HA 2026.9.4: custom manifest discovery, native entities, VIN identity, per-vehicle capabilities, availability and services. No production deployment or visual Tile-card inspection. |
-| 6 | Refresh, lock, unlock, climate start/stop, charge start/stop, limits | Implement and verify each operation against the actual API before the next. Separate acceptance, completion and refreshed observation. Not started. |
-| 7 | Polling, cooldowns, outage cache, Docker, logging, final tests | Restart/token rotation/broker outage/API outage/rate-limit tests and real container verification. Not started. |
+| 6 | Refresh, lock, unlock, climate start/stop, charge start/stop, limits | Implement and verify each operation against the actual API before the next. Separate acceptance, completion and refreshed observation. Command transport implemented; actual Hyundai operations not started. |
+| 7 | Polling, cooldowns, outage cache, Docker, logging, final tests | Polling/backoff, memory cache, command journal/cooldown, Docker and outage/restart tests implemented. Final live vehicle verification remains pending. |
 
 Phase 2 deliberately provides a read-only `--discover` acceptance command. It does not create placeholder command handlers or pretend that an HA device exists. CCI tokens are acquired/refreshed now; the CCS exchange and GSPA user-id/stamp logic belong to phase 3, where they are first needed.
 
@@ -36,7 +36,7 @@ Bridge connectivity, API reachability and vehicle timestamp freshness remain dis
 
 ## Next required evidence
 
-Once a vehicle is linked, re-run `--discover` and verify VIN/model before implementing phase 3. Continue the .NET producer against the established contract; advertise only capabilities backed by actual adapter implementation and evidence. Credentials are supplied per process; session tokens are stored outside the checkout. Never commit raw tokens or VIN/location fixtures from a real account without sanitizing them.
+Once a vehicle is linked, re-run `--discover` and verify VIN/model before implementing phase 3. Use the implemented .NET producer against the established contract; advertise only capabilities backed by actual adapter implementation and evidence. Credentials are supplied per process; session tokens are stored outside the checkout. Never commit raw tokens or VIN/location fixtures from a real account without sanitizing them.
 
 ## Local verification — 2026-10-06
 
@@ -57,3 +57,11 @@ Authentication/session lifecycle is now live verified. The phase 2 linked-vehicl
 The HA 2026.9.4 test runtime loads all seven native platforms. **50 cases pass**, including the real broker test. Tests cover 15 entities for a synthetic EV, one vehicle device via the bridge, another model with limited capabilities, registry customization after reload, nullable/invalid observations, API outage versus bridge/broker loss, Config Flow and native service commands. Accepted responses remain pending, terminal errors propagate, timeouts have unknown outcomes and state changes only with new observations. Ruff lint/format and JSON/diff checks also pass.
 
 A separate test uses actual paho transport and Mosquitto 2.0.22 in a disposable Docker container bound to loopback. It publishes synthetic retained state before HA startup, verifies custom integration discovery from the manifest and native state, reloads the integration/MQTT connection and checks offline/online transitions. This verifies the consumer and transport, not Hyundai API behavior or a deployed HA system. See [HA instructions](home-assistant.md).
+
+## .NET transport and operation verification — 2026-10-07
+
+The daemon now publishes v1 manifests, normalized retained state and availability, with MQTT 5 retained-control rejection, an offline Last Will and cache replay after reconnect. Command transport validates capabilities/arguments, correlates UUIDs, persists execution markers/results and forced-refresh cooldown, serializes backend operations and reports unknown outcomes on timeout/restart. No control is automatically retried; observations are published before releasing the backend gate for the next poll. Production discovery advertises empty state/control capabilities, so unsupported Hyundai operations are not exposed.
+
+**60 .NET cases pass** against disposable Mosquitto, with the HA-only companion test skipped in that standalone run. **51 HA cases pass**, including the real `.NET → Mosquitto → HA → native unlock → .NET` pipeline, which starts that companion and verifies accepted/pending, completed and newly observed state. After the final observation-ordering change, the .NET suite and affected HA pipeline passed again. Existing authentication/session coverage remains green. Ruff, JSON documents, CLI configuration errors, Compose validation and diff checks pass.
+
+The final Docker image builds and runs as UID 1654 with a read-only root filesystem and owner-only durable storage. A second process using the same volume is rejected. Dummy-credential testing on an internal network without Internet access confirms structured API failure/backoff while MQTT remains available, broker restart/cache replay, abrupt offline Last Will and graceful stop/start. Temporary test containers/network/volume are removed after verification. No production HA deployment, real vehicle status, forced refresh or physical remote command was performed.

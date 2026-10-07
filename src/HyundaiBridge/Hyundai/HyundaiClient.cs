@@ -52,6 +52,24 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
         finally { gate.Release(); }
     }
 
+    internal async Task<BridgeSnapshot> GetBridgeSnapshotAsync(CancellationToken cancellationToken)
+    {
+        var discovered = await GetVehiclesAsync(cancellationToken);
+        var vehicles = new List<VehicleMetadata>();
+        foreach (var vehicle in discovered)
+        {
+            if (string.IsNullOrWhiteSpace(vehicle.Vin))
+            {
+                logger.LogWarning("Discovered vehicle omitted from bridge metadata because VIN is missing");
+                continue;
+            }
+            // Discovery is the only implemented adapter feature. No state or
+            // writable capability is inferred from a model name or test fixture.
+            vehicles.Add(new(vehicle.VehicleId, vehicle.Vin, vehicle.Name, vehicle.Model, VehicleCapabilities.None));
+        }
+        return new(vehicles, []);
+    }
+
     private async Task EnsureSessionAsync(bool forceRefresh, CancellationToken cancellationToken)
     {
         if (session is not null && !forceRefresh && !session.NeedsRefresh(time.GetUtcNow())) return;

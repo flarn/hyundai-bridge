@@ -2,7 +2,7 @@
 
 `custom_components/hyundai_bridge` consumes the [MQTT v1 contract](mqtt-v1.md) and exposes native Home Assistant entities. Tested with Home Assistant **2026.9.4** and Python 3.14.6. No Hyundai account, tokens, endpoint knowledge or Python Hyundai library is present in HA.
 
-**Current delivery:** the HA consumer works against a v1 producer. The .NET service currently authenticates and discovers vehicles; its state adapter and MQTT publisher are still pending. The account has no linked vehicle yet. Installing this component alone therefore does not supply live car data. All HA verification below uses synthetic vehicle data on an isolated broker.
+**Current delivery:** the HA consumer works against a v1 producer. The .NET service currently authenticates and discovers vehicles; its MQTT publisher and command transport are implemented, while the Hyundai state/control adapter remains pending. The account has no linked vehicle yet. Installing this component alone therefore does not supply live car data. All HA verification below uses synthetic vehicle data on an isolated broker.
 
 ## Install
 
@@ -29,7 +29,7 @@ Changing one charge limit preserves the last observed opposite limit. Both limit
 
 Controls use native HA services (`lock.lock`, `climate.set_temperature`, `number.set_value`, `button.press`, etc.). They publish a non-retained command with a UUID and wait up to 120 seconds for a correlated terminal result. `accepted` keeps the request pending. `failed` raises a service error. Timeout or disconnection reports an **unknown outcome**, without automatic resubmission. `last_command` exposes the status; only new state observations change lock/climate/charge-limit values.
 
-Command completion and actual Hyundai operation are different verification levels. These tests verify HA and transport behavior; they do not certify physical commands. The future .NET adapter must handle Hyundai completion, rate limits, refresh cooldown and command deduplication.
+Command completion and actual Hyundai operation are different verification levels. These tests verify HA and transport behavior; they do not certify physical commands. The .NET transport implements persisted deduplication, refresh cooldown and bounded execution. The Hyundai adapter must still verify physical completion and observations. See [bridge service](bridge-service.md).
 
 ## Run tests
 
@@ -41,7 +41,7 @@ python3.14 -m venv .venv
 .venv/bin/ruff format --check custom_components tests/ha
 ```
 
-Tests load the real HA integration/platforms/state machine and registries, with HA's MQTT client fixture. They cover entity mapping, multiple vehicle capabilities, nullable/invalid data, config flow, stable identity/reload, connection loss and native services through accepted/completed/failed/timeout responses. The optional broker test is skipped unless explicitly configured.
+Tests load the real HA integration/platforms/state machine and registries, with HA's MQTT client fixture. They cover entity mapping, multiple vehicle capabilities, nullable/invalid data, config flow, stable identity/reload, connection loss and native services through accepted/completed/failed/timeout responses. The optional broker and .NET pipeline tests are skipped unless explicitly configured.
 
 To run the broker smoke test, use a **disposable local broker**. It writes synthetic retained documents and must never target a production broker. The test accepts only a loopback port, not an arbitrary hostname.
 
@@ -50,8 +50,11 @@ docker run --detach --rm --name hyundai-ha-test-broker \
   -p 127.0.0.1:18884:1883 \
   --mount "type=bind,source=$(pwd)/tests/ha/mosquitto.conf,target=/mosquitto/config/mosquitto.conf,readonly" \
   eclipse-mosquitto:2.0.22
-HYUNDAI_TEST_MQTT_PORT=18884 .venv/bin/pytest -q tests/ha/test_broker.py
+HYUNDAI_TEST_MQTT_PORT=18884 dotnet test HyundaiBridge.slnx --configuration Release
+HYUNDAI_TEST_MQTT_PORT=18884 .venv/bin/pytest -q tests/ha/test_broker.py tests/ha/test_dotnet_pipeline.py
 docker stop hyundai-ha-test-broker
 ```
 
 The smoke test publishes retained state before HA starts, disconnects its publisher, discovers/configures the custom integration through MQTT, verifies native battery state, reloads the integration/MQTT connection and checks offline/online transitions. It uses real paho/Mosquitto transport. No messages are sent to a real vehicle and no production HA deployment is included.
+
+The additional pipeline test starts the real .NET MQTT publisher with a synthetic test adapter, consumes its retained documents in HA and calls the native unlock service. It verifies pending acceptance, confirmed completion and the subsequent observed lock state through actual Mosquitto transport. No Hyundai requests or credentials are used.
