@@ -1,4 +1,4 @@
-"""Native charging and plug-status entities."""
+"""Native charging, plug and opening-status entities."""
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -18,6 +18,36 @@ DESCRIPTIONS = (
         key="isPluggedIn",
         translation_key="plugged_in",
         device_class=BinarySensorDeviceClass.PLUG,
+    ),
+    BinarySensorEntityDescription(
+        key="isFrontLeftDoorOpen",
+        translation_key="front_left_door",
+        device_class=BinarySensorDeviceClass.DOOR,
+    ),
+    BinarySensorEntityDescription(
+        key="isFrontRightDoorOpen",
+        translation_key="front_right_door",
+        device_class=BinarySensorDeviceClass.DOOR,
+    ),
+    BinarySensorEntityDescription(
+        key="isRearLeftDoorOpen",
+        translation_key="rear_left_door",
+        device_class=BinarySensorDeviceClass.DOOR,
+    ),
+    BinarySensorEntityDescription(
+        key="isRearRightDoorOpen",
+        translation_key="rear_right_door",
+        device_class=BinarySensorDeviceClass.DOOR,
+    ),
+    BinarySensorEntityDescription(
+        key="isTrunkOpen",
+        translation_key="trunk",
+        device_class=BinarySensorDeviceClass.OPENING,
+    ),
+    BinarySensorEntityDescription(
+        key="isHoodOpen",
+        translation_key="hood",
+        device_class=BinarySensorDeviceClass.OPENING,
     ),
 )
 

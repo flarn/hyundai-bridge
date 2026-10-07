@@ -8,8 +8,25 @@ from datetime import datetime
 from typing import Any
 
 TOPIC_ID = re.compile(r"^[A-Za-z0-9_-]+$")
-BOOLEAN_FIELDS = {"isCharging", "isPluggedIn", "isLocked", "isClimateOn", "isDefrostOn"}
-PERCENT_FIELDS = {"batteryPercent", "acChargeLimitPercent", "dcChargeLimitPercent"}
+BOOLEAN_FIELDS = {
+    "isCharging",
+    "isPluggedIn",
+    "isLocked",
+    "isClimateOn",
+    "isDefrostOn",
+    "isFrontLeftDoorOpen",
+    "isFrontRightDoorOpen",
+    "isRearLeftDoorOpen",
+    "isRearRightDoorOpen",
+    "isTrunkOpen",
+    "isHoodOpen",
+}
+PERCENT_FIELDS = {
+    "batteryPercent",
+    "auxiliaryBatteryPercent",
+    "acChargeLimitPercent",
+    "dcChargeLimitPercent",
+}
 NUMBER_FIELDS = {
     "estimatedRangeKm",
     "odometerKm",

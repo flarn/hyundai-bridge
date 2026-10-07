@@ -92,7 +92,7 @@ internal static partial class Contract
 
     internal static void ValidateState(VehicleState state)
     {
-        foreach (var percentage in new[] { state.BatteryPercent, state.AcChargeLimitPercent, state.DcChargeLimitPercent })
+        foreach (var percentage in new[] { state.BatteryPercent, state.AuxiliaryBatteryPercent, state.AcChargeLimitPercent, state.DcChargeLimitPercent })
             if (percentage is < 0 or > 100) throw new FormatException("Invalid normalized percentage");
         foreach (var distance in new[] { state.EstimatedRangeKm, state.OdometerKm })
             if (distance < 0) throw new FormatException("Invalid normalized distance");

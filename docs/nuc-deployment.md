@@ -157,7 +157,7 @@ Rollback: restore the preceding startup-only image (`e77a6032…`), preserving
 credentials, port binding and persistent volume. Vehicle status and controls
 remain pending.
 
-## Current release: cached vehicle status and formatted JSON — 2026-10-07
+## Cached vehicle status and formatted JSON — 2026-10-07
 
 The bridge reads each discovered vehicle's cached status immediately after startup
 discovery, then every ten minutes after a successful read. No vehicle wake or remote
@@ -203,12 +203,42 @@ but predates the formatted response panel.
 registry.local/hyundai-bridge@sha256:11a7d6bdc039a8e7a3eb2cca73eea7f10091db244ef2c452c866bddcd74e0bbf
 ```
 
+## Current release: auxiliary battery and openings — 2026-10-07
+
+The user requested the 12-V battery level, four door openings, trunk and hood.
+Seven optional normalized v1 fields are now published and supported by native HA
+sensor/binary-sensor descriptions, with stable VIN-based identifiers. Unsupported
+values remain null; this adds no Hyundai calls or commands.
+
+Published and deployed image:
+
+```text
+registry.local/hyundai-bridge:20261007-battery-openings
+registry.local/hyundai-bridge@sha256:15edd6f4662a09cffe3401fa08c5a8a13dc31fa3815eabf2b399e5d0a6956c53
+```
+
+Only this project's image changed through Arcane. Startup at 18:47:00 UTC, one
+vehicle found, discovery/CCS exchange/stored-status all HTTP 200, no request failures
+and connected MQTT. Next cached status was scheduled for 18:57:01 UTC.
+A temporary read-only MQTT observer verified retained manifest capabilities and
+state: auxiliaryBatteryPercent 83 and all six opening booleans false. Commands
+remain empty. The observer was removed and its file-transfer server stopped.
+
+Local validation: 81 .NET tests passed (three broker/HA-companion checks skipped);
+58 HA tests passed (two optional real-broker checks skipped). New tests cover
+individual opening mapping, unknown/sentinel values, serialized normalized data,
+contract validation and native HA device classes/state/unknown values.
+The production HA component itself has not been installed or upgraded by this step.
+
+Rollback: restore the preceding JSON-status image digest (131f7007…), preserving
+credentials, port mapping and persistent volume, then redeploy only this project.
+
 ## Install on the Docker host
 
 Copy the repository's `compose.yaml` into the stack directory. Create an owner-only `.env` (0600) with the existing MQTT broker connection and Hyundai credentials, following `.env.example`. Set:
 
 ```text
-HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:131f70070711322d35eaa0ee2c97ffefd5cf1c2668d9d48136c0c29e0f0a788a
+HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:15edd6f4662a09cffe3401fa08c5a8a13dc31fa3815eabf2b399e5d0a6956c53
 BRIDGE_ID=home
 ```
 

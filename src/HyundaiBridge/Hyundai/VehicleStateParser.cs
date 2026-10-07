@@ -30,10 +30,17 @@ internal static class VehicleStateParser
             // v1 uses whole percentages; round fractional SoC without treating it as unsupported.
             BatteryPercent = Number(At(state, "Green.BatteryManagement.BatteryRemain.Ratio")) is >= 0 and <= 100 and var soc
                 ? (int)Math.Round(soc, MidpointRounding.AwayFromZero) : null,
+            AuxiliaryBatteryPercent = Percent(At(state, "Electronics.Battery.Level")),
             EstimatedRangeKm = range >= 0 ? range : null,
             IsCharging = remaining >= 0 ? remaining > 0 : null,
             IsPluggedIn = Bool(At(state, "Green.ChargingInformation.ConnectorFastening.State")),
             IsLocked = locked,
+            IsFrontLeftDoorOpen = Bool(At(state, "Cabin.Door.Row1.Driver.Open")),
+            IsFrontRightDoorOpen = Bool(At(state, "Cabin.Door.Row1.Passenger.Open")),
+            IsRearLeftDoorOpen = Bool(At(state, "Cabin.Door.Row2.Left.Open")),
+            IsRearRightDoorOpen = Bool(At(state, "Cabin.Door.Row2.Right.Open")),
+            IsTrunkOpen = Bool(At(state, "Body.Trunk.Open")),
+            IsHoodOpen = Bool(At(state, "Body.Hood.Open")),
             AcChargeLimitPercent = Percent(At(state, "Green.ChargingInformation.TargetSoC.Standard")),
             DcChargeLimitPercent = Percent(At(state, "Green.ChargingInformation.TargetSoC.Quick")),
             TargetTemperatureCelsius = target,

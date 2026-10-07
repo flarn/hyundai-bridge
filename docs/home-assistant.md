@@ -2,7 +2,7 @@
 
 `custom_components/hyundai_bridge` consumes the [MQTT v1 contract](mqtt-v1.md) and exposes native Home Assistant entities. Tested with Home Assistant **2026.9.4** and Python 3.14.6. No Hyundai account, tokens, endpoint knowledge or Python Hyundai library is present in HA.
 
-**Current delivery:** the HA consumer works against a v1 producer. The .NET service currently authenticates and discovers vehicles; its MQTT publisher and command transport are implemented, while the Hyundai state/control adapter remains pending. The account has no linked vehicle yet. Installing this component alone therefore does not supply live car data. All HA verification below uses synthetic vehicle data on an isolated broker.
+**Current delivery:** the HA consumer works against a v1 producer. The .NET service authenticates, discovers a linked vehicle and retrieves cached Hyundai state every ten minutes without waking the vehicle. It also publishes auxiliary battery and six opening fields when observed. Hyundai remote controls remain pending and unadvertised. HA entity verification uses synthetic data; production installation of the HA component is a separate deployment step.
 
 ## Install
 

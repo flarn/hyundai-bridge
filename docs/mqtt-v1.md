@@ -25,7 +25,9 @@ Native sensors/binary sensors/tracker require their respective fields. A native 
 
 Charge numbers require both AC/DC fields, the charge-limit command and actual bounds/step in `capabilities.chargeLimits`. Updating one limit includes the last observed opposite limit; unknown opposite values prevent the command. Minimum/maximum/step values come from the manifest, not a Hyundai assumption in HA. Refresh/charging buttons require their command capabilities. Unsupported features never generate entities.
 
-The initial scalar fields are those in `contract/examples/state.json`: battery percentage, EV range in km, odometer in km, charging/plug/lock booleans, AC/DC charge limits, climate on/target/defrost, optional measured temperatures, optional GPS coordinates, vehicle observation time and bridge retrieval time. No door/hood/trunk entities are added in this version.
+The initial scalar fields are those in `contract/examples/state.json`: battery percentage, EV range in km, odometer in km, charging/plug/lock booleans, AC/DC charge limits, climate on/target/defrost, optional measured temperatures, optional GPS coordinates, vehicle observation time and bridge retrieval time.
+
+Optional additive v1 fields: `auxiliaryBatteryPercent` (integer 0–100, 12-V battery state of charge), and the booleans `isFrontLeftDoorOpen`, `isFrontRightDoorOpen`, `isRearLeftDoorOpen`, `isRearRightDoorOpen`, `isTrunkOpen`, `isHoodOpen`. True means open, false closed, null/absent unknown. They create a native battery sensor and six opening binary sensors only when advertised. Existing consumers can ignore these additions; no major version or identity changes are required.
 
 ## Commands
 

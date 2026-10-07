@@ -51,6 +51,43 @@ public sealed class VehicleStateTests
         var state = VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow);
         Assert.Null(state.BatteryPercent); Assert.Null(state.IsLocked); Assert.Null(state.IsCharging);
         Assert.Null(state.VehicleUpdatedAt); Assert.Null(state.Latitude); Assert.Null(state.Longitude);
+        Assert.Null(state.AuxiliaryBatteryPercent); Assert.Null(state.IsFrontLeftDoorOpen);
+        Assert.Null(state.IsTrunkOpen); Assert.Null(state.IsHoodOpen);
+    }
+
+    [Fact]
+    public void AuxiliaryBatteryAndEachOpeningMapIndependentlyIntoTheContract()
+    {
+        using var document = JsonDocument.Parse("""
+            {"state":{"Vehicle":{"Electronics":{"Battery":{"Level":83}},
+             "Cabin":{"Door":{"Row1":{"Driver":{"Open":1},"Passenger":{"Open":0}},
+              "Row2":{"Left":{"Open":0},"Right":{"Open":1}}}},
+             "Body":{"Trunk":{"Open":1},"Hood":{"Open":0}}}}}
+            """);
+        var state = VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow);
+        Assert.Equal(83, state.AuxiliaryBatteryPercent);
+        Assert.True(state.IsFrontLeftDoorOpen); Assert.False(state.IsFrontRightDoorOpen);
+        Assert.False(state.IsRearLeftDoorOpen); Assert.True(state.IsRearRightDoorOpen);
+        Assert.True(state.IsTrunkOpen); Assert.False(state.IsHoodOpen);
+        using var normalized = JsonDocument.Parse(HyundaiBridge.Mqtt.Contract.Serialize(state));
+        Assert.Equal(83, normalized.RootElement.GetProperty("auxiliaryBatteryPercent").GetInt32());
+        Assert.True(normalized.RootElement.GetProperty("isFrontLeftDoorOpen").GetBoolean());
+        Assert.False(normalized.RootElement.GetProperty("isHoodOpen").GetBoolean());
+    }
+
+    [Fact]
+    public void UnsupportedAuxiliaryBatteryAndOpeningValuesStayUnknown()
+    {
+        using var document = JsonDocument.Parse("""
+            {"state":{"Vehicle":{"Electronics":{"Battery":{"Level":255}},
+             "Cabin":{"Door":{"Row1":{"Driver":{"Open":2},"Passenger":{"Open":1}}}},
+             "Body":{"Trunk":{"Open":null},"Hood":{"Open":"unknown"}}}}}
+            """);
+        var state = VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow);
+        Assert.Null(state.AuxiliaryBatteryPercent); Assert.Null(state.IsFrontLeftDoorOpen);
+        Assert.True(state.IsFrontRightDoorOpen); Assert.Null(state.IsRearLeftDoorOpen);
+        Assert.Null(state.IsTrunkOpen); Assert.Null(state.IsHoodOpen);
+        Assert.Throws<FormatException>(() => HyundaiBridge.Mqtt.Contract.ValidateState(state with { AuxiliaryBatteryPercent = 101 }));
     }
 
     [Fact]

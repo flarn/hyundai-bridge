@@ -50,6 +50,31 @@ battery temperatures/voltages and charging schedules. Their presence does not ad
 new entities or commands. A cached response alone cannot establish live freshness.
 Do not substitute retrieval time when the source timestamp is absent.
 
+## Requested auxiliary battery and openings
+
+Following the user's request, the adapter now maps `Electronics.Battery.Level`
+to `auxiliaryBatteryPercent`, and cabin door `Open` fields plus
+`Body.Trunk.Open`/`Body.Hood.Open` to six normalized opening booleans.
+The current stored response reports 83% and all six openings closed (0).
+The inspected upstream parser uses the same paths. For this Swedish left-hand-drive
+vehicle, Row1.Driver is front left and Row1.Passenger front right, as mapped upstream.
+Only 0/1 and boolean opening values are supported; unknown/sentinel data remains null.
+HA exposes a battery measurement and opening entities on the same vehicle device,
+with no new API requests or controls.
+
+Position is already parsed from `Location.GeoCoord` and supported by the native HA
+tracker, but the actual stored response has no Location field. The inspected EU
+client obtains ordinary location from stored status; no separate ordinary cached
+location request was found there. Stored surround-view media can contain capture
+coordinates, but these are tied to a photo and are not substituted for vehicle status.
+
+Climate target and defrost parsing also already exist. The current driver's target
+is OFF and blower speed is zero; no measured cabin temperature is present. Upstream
+uses blower speed as an air-control indication, which alone does not verify heating,
+cooling or remote climate command support. Native climate controls still require
+verified start/stop commands and supported bounds; their implementation remains a
+separate phase. No climate or location wake command was sent for this research.
+
 ## Operation
 
 Discover only at startup, with at most five discovery attempts. Read cached state

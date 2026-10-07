@@ -19,6 +19,13 @@ DESCRIPTIONS = (
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
+        key="auxiliaryBatteryPercent",
+        translation_key="auxiliary_battery",
+        device_class=SensorDeviceClass.BATTERY,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
         key="estimatedRangeKm",
         translation_key="range",
         device_class=SensorDeviceClass.DISTANCE,

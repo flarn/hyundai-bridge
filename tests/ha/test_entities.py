@@ -162,3 +162,45 @@ async def test_unknown_metadata_does_not_invent_model(hass, bridge, manifest):
     )
     assert vehicle.model is None
     assert vehicle.name == "KMH00000000000004"
+
+
+async def test_auxiliary_battery_and_openings_are_native_nullable_entities(
+    hass, bridge, manifest, vehicle_state
+):
+    fields = {
+        "auxiliaryBatteryPercent": 83,
+        "isFrontLeftDoorOpen": True,
+        "isFrontRightDoorOpen": False,
+        "isRearLeftDoorOpen": False,
+        "isRearRightDoorOpen": True,
+        "isTrunkOpen": True,
+        "isHoodOpen": False,
+    }
+    manifest["vehicles"][0]["capabilities"]["stateFields"].extend(fields)
+    await announce(hass, manifest)
+    await send(hass, "state", {**vehicle_state, **fields})
+    registry = er.async_get(hass)
+    entity_ids = {}
+    for field, value in fields.items():
+        domain = "sensor" if field == "auxiliaryBatteryPercent" else "binary_sensor"
+        entity_ids[field] = registry.async_get_entity_id(
+            domain, "hyundai_bridge", "KMH00000000000001_" + field
+        )
+        state = hass.states.get(entity_ids[field])
+        assert state.state == ("83" if domain == "sensor" else "on" if value else "off")
+        expected_class = (
+            "battery"
+            if domain == "sensor"
+            else "opening"
+            if field in ("isTrunkOpen", "isHoodOpen")
+            else "door"
+        )
+        assert state.attributes["device_class"] == expected_class
+    battery = hass.states.get(entity_ids["auxiliaryBatteryPercent"])
+    assert battery.attributes["unit_of_measurement"] == "%"
+    assert battery.attributes["state_class"] == "measurement"
+    entries = er.async_entries_for_config_entry(registry, bridge.entry_id)
+    assert len({entry.device_id for entry in entries}) == 1
+    await send(hass, "state", {**vehicle_state, **dict.fromkeys(fields)})
+    for entity_id in entity_ids.values():
+        assert hass.states.get(entity_id).state == "unknown"

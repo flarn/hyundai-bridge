@@ -40,6 +40,9 @@
       },
       "cabin_temperature": {
         "name": "Kupétemperatur"
+      },
+      "auxiliary_battery": {
+        "name": "12-voltsbatteri"
       }
     },
     "binary_sensor": {
@@ -48,6 +51,24 @@
       },
       "plugged_in": {
         "name": "Ansluten laddkabel"
+      },
+      "front_left_door": {
+        "name": "Vänster framdörr"
+      },
+      "front_right_door": {
+        "name": "Höger framdörr"
+      },
+      "rear_left_door": {
+        "name": "Vänster bakdörr"
+      },
+      "rear_right_door": {
+        "name": "Höger bakdörr"
+      },
+      "trunk": {
+        "name": "Baklucka"
+      },
+      "hood": {
+        "name": "Motorhuv"
       }
     },
     "number": {

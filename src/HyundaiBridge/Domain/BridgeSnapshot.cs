@@ -18,10 +18,17 @@ internal sealed record VehicleState
     public required string VehicleId { get; init; }
     public required string Vin { get; init; }
     public int? BatteryPercent { get; init; }
+    public int? AuxiliaryBatteryPercent { get; init; }
     public double? EstimatedRangeKm { get; init; }
     public bool? IsCharging { get; init; }
     public bool? IsPluggedIn { get; init; }
     public bool? IsLocked { get; init; }
+    public bool? IsFrontLeftDoorOpen { get; init; }
+    public bool? IsFrontRightDoorOpen { get; init; }
+    public bool? IsRearLeftDoorOpen { get; init; }
+    public bool? IsRearRightDoorOpen { get; init; }
+    public bool? IsTrunkOpen { get; init; }
+    public bool? IsHoodOpen { get; init; }
     public int? AcChargeLimitPercent { get; init; }
     public int? DcChargeLimitPercent { get; init; }
     public bool? IsClimateOn { get; init; }
