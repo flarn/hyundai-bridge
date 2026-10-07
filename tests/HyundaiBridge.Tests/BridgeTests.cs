@@ -200,14 +200,23 @@ public sealed class BridgeTests
         using var fixture = new CommandFixture();
         using var mqtt = fixture.Bridge();
         var count = 0;
+        var statistics = new BridgeStatistics(fixture.Clock);
         var worker = new BridgeWorker(mqtt, _ => ++count == 1 ? Task.FromResult(TestVehicle.Snapshot()) : throw new IOException(),
-            fixture.Gate, fixture.Clock, NullLogger<BridgeWorker>.Instance);
+            fixture.Gate, fixture.Clock, NullLogger<BridgeWorker>.Instance, statistics);
         await worker.PollOnceAsync(CancellationToken.None);
         var original = mqtt.States["example-ev"];
+        var success = statistics.Snapshot(false);
+        Assert.True(success.ApiReachable);
         fixture.Clock.Now += TimeSpan.FromMinutes(10);
         await worker.PollOnceAsync(CancellationToken.None);
         Assert.Same(original, mqtt.States["example-ev"]);
         Assert.Equal(original.BridgeUpdatedAt, mqtt.States["example-ev"].BridgeUpdatedAt);
+        var failure = statistics.Snapshot(false);
+        Assert.False(failure.ApiReachable);
+        Assert.Equal(success.LastSuccessAt, failure.LastSuccessAt);
+        Assert.Equal(success.VehicleCount, failure.VehicleCount);
+        Assert.Equal(worker.Schedule.DueAt, failure.NextPollAt);
+        Assert.Equal("IOException", failure.LastFailure);
     }
 
     [Fact]

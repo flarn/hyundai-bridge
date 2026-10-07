@@ -4,9 +4,11 @@
     <TargetFramework>net11.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="MQTTnet" Version="5.2.0.1603" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0-rc.1.26425.128" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="11.0.0-rc.1.26425.128" />
     <InternalsVisibleTo Include="HyundaiBridge.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Hosting/Web/*" />
   </ItemGroup>
 </Project>

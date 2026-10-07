@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using HyundaiBridge.Domain;
+using HyundaiBridge.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace HyundaiBridge.Hyundai;
@@ -21,6 +22,7 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
     private readonly string accountHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(username)));
     private HyundaiSession? session;
     private bool loaded;
+    internal BridgeStatistics Statistics { get; } = new(time);
 
     internal async Task<IReadOnlyList<Vehicle>> GetVehiclesAsync(CancellationToken cancellationToken)
     {
@@ -30,13 +32,14 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
             if (!loaded)
             {
                 session = await store.LoadAsync(accountHash, cancellationToken);
+                if (session is not null) Statistics.SessionUpdated("stored", session.ExpiresAt);
                 loaded = true;
             }
             await EnsureSessionAsync(forceRefresh: false, cancellationToken);
             for (var attempt = 0; attempt < 2; attempt++)
             {
                 using var request = CciRequest(HttpMethod.Get, "v1/vehicle/available-vehicles?detail=true", session!);
-                using var response = await http.SendAsync(request, cancellationToken);
+                using var response = await SendAsync(request, "discovery", cancellationToken);
                 if (response.StatusCode == HttpStatusCode.Unauthorized && attempt == 0)
                 {
                     await EnsureSessionAsync(forceRefresh: true, cancellationToken);
@@ -79,6 +82,7 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
             next = await LoginAsync(Guid.NewGuid().ToString(), cancellationToken);
             await store.SaveAsync(next, cancellationToken);
             session = next;
+            Statistics.SessionUpdated("login", next.ExpiresAt);
             logger.LogInformation("Authenticated with Hyundai");
             return;
         }
@@ -86,7 +90,7 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
         {
             using var request = CciRequest(HttpMethod.Post, "v2/auth/token-refresh", session);
             request.Content = JsonContent.Create(session.RefreshPayload());
-            using var response = await http.SendAsync(request, cancellationToken);
+            using var response = await SendAsync(request, "refresh", cancellationToken);
             var data = await ReadJsonAsync(response, "Token refresh", cancellationToken);
             next = HyundaiSession.Parse(data, accountHash, session.DeviceId, time.GetUtcNow(), session);
             // The app may rotate its exchangeable token in the t cookie.
@@ -104,12 +108,14 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
             next = await LoginAsync(session.DeviceId, cancellationToken);
             await store.SaveAsync(next, cancellationToken);
             session = next;
+            Statistics.SessionUpdated("login", next.ExpiresAt);
             logger.LogInformation("Authenticated with Hyundai");
             return;
         }
         // Persist the rotated full set before reporting success.
         await store.SaveAsync(next, cancellationToken);
         session = next;
+        Statistics.SessionUpdated("refresh", next.ExpiresAt);
         logger.LogInformation("Hyundai token refreshed");
     }
 
@@ -119,7 +125,7 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
             ClientId + "&redirect_uri=" + Uri.EscapeDataString(RedirectUri) + "&lang=en&state=ccsp&country=de");
         await AuthorizeAsync(authorize, cancellationToken);
         using var certRequest = IdpRequest(HttpMethod.Get, Idp + "/auth/api/v1/accounts/certs");
-        using var certResponse = await http.SendAsync(certRequest, cancellationToken);
+        using var certResponse = await SendAsync(certRequest, "certificate", cancellationToken);
         var certData = await ReadJsonAsync(certResponse, "Authentication certificate", cancellationToken);
         if (certData.ValueKind != JsonValueKind.Object ||
             !certData.TryGetProperty("retValue", out var jwk) || jwk.ValueKind != JsonValueKind.Object)
@@ -152,7 +158,7 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
             ["redirect_uri"] = RedirectUri, ["scope"] = "", ["nonce"] = "", ["state"] = "ccsp",
             ["username"] = username, ["connector_session_key"] = "", ["kid"] = kid, ["_csrf"] = ""
         });
-        using var signinResponse = await http.SendAsync(signin, cancellationToken);
+        using var signinResponse = await SendAsync(signin, "signin", cancellationToken);
         if (signinResponse.StatusCode != HttpStatusCode.Found)
         {
             CheckHttpStatus(signinResponse, "Authentication signin");
@@ -170,7 +176,7 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
         }
         using var exchange = CciRequest(HttpMethod.Post, "v1/auth/token?code=" + Uri.EscapeDataString(code), null, deviceId);
         exchange.Content = new ByteArrayContent([]);
-        using var exchangeResponse = await http.SendAsync(exchange, cancellationToken);
+        using var exchangeResponse = await SendAsync(exchange, "exchange", cancellationToken);
         var data = await ReadJsonAsync(exchangeResponse, "Authentication token exchange", cancellationToken);
         return HyundaiSession.Parse(data, accountHash, deviceId, time.GetUtcNow());
     }
@@ -182,7 +188,7 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
         for (var redirects = 0; redirects <= 5; redirects++)
         {
             using var request = IdpRequest(HttpMethod.Get, uri.AbsoluteUri);
-            using var response = await http.SendAsync(request, cancellationToken);
+            using var response = await SendAsync(request, "authorize", cancellationToken);
             if (response.StatusCode is HttpStatusCode.MovedPermanently or HttpStatusCode.Found or
                 HttpStatusCode.SeeOther or HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect)
             {
@@ -209,6 +215,27 @@ internal sealed class HyundaiClient(HttpClient http, SessionStore store, string 
         var request = new HttpRequestMessage(method, uri);
         request.Headers.TryAddWithoutValidation("User-Agent", MobileAgent);
         return request;
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, string operation,
+        CancellationToken cancellationToken)
+    {
+        var started = time.GetTimestamp();
+        int? status = null;
+        string? failure = null;
+        try
+        {
+            var response = await http.SendAsync(request, cancellationToken);
+            status = (int)response.StatusCode;
+            return response;
+        }
+        catch (OperationCanceledException)
+        {
+            failure = cancellationToken.IsCancellationRequested ? "cancelled" : "timeout";
+            throw;
+        }
+        catch (HttpRequestException) { failure = "network"; throw; }
+        finally { Statistics.RequestCompleted(operation, status, time.GetElapsedTime(started), failure); }
     }
 
     private static HttpRequestMessage CciRequest(HttpMethod method, string path, HyundaiSession? credentials, string? deviceId = null)

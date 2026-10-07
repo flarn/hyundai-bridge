@@ -71,3 +71,21 @@ The final Docker image builds and runs as UID 1654 with a read-only root filesys
 At the user's request, both .NET projects now target `net11.0`. `global.json` pins SDK `11.0.100-rc.1.26425.128`, enables prereleases and disables SDK roll-forward. Hosting/logging packages use matching `11.0.0-rc.1.26425.128` versions. Docker uses explicit `sdk:11.0.100-rc.1` and `runtime:11.0.0-rc.1` tags.
 
 Restore, Release compilation and **60 .NET tests** pass under .NET 11 RC1. The affected real HA/.NET/Mosquitto pipeline passes separately, including its .NET companion. The Docker image builds, reports runtime `11.0.0-rc.1.26425.128`, starts the daemon, connects to MQTT, handles the simulated API outage and stops gracefully. Temporary test resources were removed. No Hyundai vehicle requests or production deployment were performed.
+
+## Bridge connection dashboard — 2026-10-07
+
+A read-only dashboard runs in the existing .NET process using ASP.NET Core 11 RC1.
+It observes real HTTP calls and the existing poll/session/MQTT paths; visiting it does
+not issue Hyundai requests. Request metadata/history are bounded and exclude secrets,
+URLs, bodies, account/vehicle identifiers and location. Statistics reset on restart.
+The existing MQTT contract and HA component are unchanged.
+
+**63 .NET tests pass**, including real Mosquitto and the new HTTP-route/privacy/statistics
+checks. The standalone HA companion is the one optional skipped test. Existing auth
+tests verify observed login, persisted session reuse and renewal counts; the poll outage
+test verifies retained success/vehicle count alongside failure and backoff metadata.
+The amd64 Docker image builds and serves the dashboard as UID 1654 with read-only root
+and private storage. Browser inspection verifies the actual API-outage presentation;
+the test container uses dummy credentials and a refused local HTTPS proxy, so no real
+Hyundai login is attempted. Production dashboard verification is recorded separately
+in [NUC deployment](nuc-deployment.md).

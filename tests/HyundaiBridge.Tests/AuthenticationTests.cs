@@ -69,6 +69,14 @@ public sealed class AuthenticationTests
         foreach (var secret in new[] { "cci-access", "refresh-secret", "nonccs", "test-password", "code+value" })
             Assert.DoesNotContain(secret, string.Join('\n', fixture.Log.Messages));
         Assert.Equal(0, fixture.Http.Remaining);
+        var status = client.Statistics.Snapshot(false);
+        Assert.Equal(5, status.RequestCount);
+        Assert.Equal(1, status.Logins);
+        Assert.Equal("login", status.SessionSource);
+        Assert.Equal(saved.ExpiresAt, status.SessionExpiresAt);
+        var diagnostics = JsonSerializer.Serialize(status);
+        foreach (var secret in new[] { "cci-access", "refresh-secret", "nonccs", "test-password", "code+value", "SANITIZED-VIN", "test@example.invalid" })
+            Assert.DoesNotContain(secret, diagnostics);
     }
 
     [Fact]
@@ -85,6 +93,10 @@ public sealed class AuthenticationTests
             });
             using var restarted = fixture.Client();
             Assert.Single(await restarted.GetVehiclesAsync(CancellationToken.None));
+            var status = restarted.Statistics.Snapshot(false);
+            Assert.Equal("stored", status.SessionSource);
+            Assert.Equal(0, status.Logins);
+            Assert.Equal(1, status.RequestCount);
         }
         Assert.Equal(2, fixture.Http.RequestCount);
     }
@@ -118,6 +130,7 @@ public sealed class AuthenticationTests
         Assert.Equal("rotated-refresh", saved!.RefreshToken);
         Assert.Equal("rotated-exchangeable", saved.ExchangeableAccessToken);
         Assert.Equal(initial.DeviceId, saved.DeviceId);
+        Assert.Equal(1, client.Statistics.Snapshot(false).Renewals);
     }
 
     [Theory]

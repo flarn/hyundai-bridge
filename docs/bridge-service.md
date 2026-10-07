@@ -59,6 +59,28 @@ The data volume contains confidential session tokens, the command journal and a 
 
 Broker ACLs should restrict bridge manifests/state publication and command publication to the appropriate bridge/HA clients. Vehicle topic IDs must be globally unique on a broker, as specified by the contract.
 
+## Connection status page
+
+The daemon includes a read-only status page at `/` and diagnostic JSON at `/api/status`.
+It shows the result/time of the last Hyundai poll, next scheduled poll (including backoff),
+vehicle count, MQTT connectivity, session source/expiry and login/renewal counts.
+HTTP statistics include request count, mean duration, HTTP/network/timeout failures,
+429 responses and the latest 20 requests with operation, timestamp, status and duration.
+Redirects are recorded as HTTP responses; application/schema failures appear as poll
+failures even when their HTTP response was 200. These are observations, not a live
+connection guarantee or Hyundai's remaining API quota.
+
+Statistics are in memory and reset on restart. Browser updates read only local statistics;
+they neither poll Hyundai nor wake vehicles. No credentials, tokens, account identifiers,
+VINs, coordinates, request URLs, response bodies or raw exception text are served.
+The page has no commands or configuration writes.
+
+Outside Docker, HTTP defaults to `127.0.0.1:8080`; `ASPNETCORE_URLS` can select the listener.
+The image listens on container port 8080. The example Compose publishes only
+`127.0.0.1:8076`; change that host address to the Docker host's LAN IP to access it from
+your home network. The page has no login; keep it on the trusted home network and do
+not expose it to the Internet. The MQTT contract and HA integration are unchanged.
+
 ## Verification
 
 ```sh

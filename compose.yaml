@@ -9,6 +9,8 @@ services:
     security_opt: [no-new-privileges:true]
     tmpfs: [/tmp]
     stop_grace_period: 20s
+    ports:
+      - "127.0.0.1:8076:8080"
     environment:
       HYUNDAI_USERNAME: ${HYUNDAI_USERNAME:?Set HYUNDAI_USERNAME}
       HYUNDAI_PASSWORD: ${HYUNDAI_PASSWORD:?Set HYUNDAI_PASSWORD}

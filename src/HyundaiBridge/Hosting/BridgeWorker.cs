@@ -7,7 +7,8 @@ using Microsoft.Extensions.Logging;
 namespace HyundaiBridge.Hosting;
 
 internal sealed class BridgeWorker(MqttBridge mqtt, Func<CancellationToken, Task<BridgeSnapshot>> poll,
-    SemaphoreSlim backendGate, TimeProvider time, ILogger<BridgeWorker> logger) : BackgroundService
+    SemaphoreSlim backendGate, TimeProvider time, ILogger<BridgeWorker> logger,
+    BridgeStatistics statistics) : BackgroundService
 {
     internal PollingSchedule Schedule { get; } = new(time);
 
@@ -18,9 +19,22 @@ internal sealed class BridgeWorker(MqttBridge mqtt, Func<CancellationToken, Task
             await backendGate.WaitAsync(cancellationToken);
             try
             {
-                var snapshot = await poll(cancellationToken);
+                BridgeSnapshot snapshot;
+                try
+                {
+                    snapshot = await poll(cancellationToken);
+                    statistics.PollSucceeded(snapshot.Vehicles.Count);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                catch (Exception error)
+                {
+                    statistics.PollFailed(error is HyundaiException { StatusCode: { } status }
+                        ? "HTTP " + status : error.GetType().Name);
+                    throw;
+                }
                 await mqtt.UpdateSnapshotAsync(snapshot, cancellationToken);
                 Schedule.Succeeded();
+                statistics.PollScheduled(Schedule.DueAt);
                 logger.LogInformation("Cached discovery retrieved: {VehicleCount} vehicles", snapshot.Vehicles.Count);
             }
             finally { backendGate.Release(); }
@@ -29,6 +43,7 @@ internal sealed class BridgeWorker(MqttBridge mqtt, Func<CancellationToken, Task
         catch (Exception error)
         {
             Schedule.Failed((error as HyundaiException)?.RetryAfter);
+            statistics.PollScheduled(Schedule.DueAt);
             await mqtt.ApiFailedAsync(cancellationToken);
             logger.LogWarning("Hyundai poll failed: {FailureType}; next attempt at {NextPoll}",
                 error.GetType().Name, Schedule.DueAt);

@@ -25,6 +25,7 @@ internal sealed class MqttBridge : IDisposable
     private bool ready;
     private string BridgeTopic => $"{Contract.Prefix}/bridges/{options.BridgeId}";
     internal IReadOnlyDictionary<string, VehicleState> States => states;
+    internal bool IsConnected => Volatile.Read(ref ready) && client.IsConnected;
 
     internal MqttBridge(BridgeOptions options, CommandProcessor commands, ILogger<MqttBridge> logger, TimeProvider time)
     {

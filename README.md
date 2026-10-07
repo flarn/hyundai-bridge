@@ -26,6 +26,11 @@ The optional Mosquitto smoke test uses a disposable loopback broker; instruction
 
 See [service configuration, Docker and verification](docs/bridge-service.md). The daemon publishes retained metadata/state/availability, reconnects with an offline Last Will, preserves observations through API outages and handles correlated commands with persisted deduplication/cooldown. Actual Hyundai state/control capabilities are enabled only after implementation and vehicle verification.
 
+The bridge also serves a read-only connection dashboard with Hyundai request statistics,
+session metadata, polling/backoff and MQTT status. The example Compose exposes it at
+`http://127.0.0.1:8076`; see [status page configuration](docs/bridge-service.md#connection-status-page)
+for LAN access. Viewing it does not make additional Hyundai requests.
+
 ```sh
 docker compose build
 docker compose up -d
