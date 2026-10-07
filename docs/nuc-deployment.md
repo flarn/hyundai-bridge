@@ -54,10 +54,11 @@ Rollback: restore the initial image digest above and remove the HTTP port bindin
 in this Arcane project's Compose configuration, then redeploy only this project.
 Keep the existing credentials and data volume.
 
-## Current release: 60-second polling — 2026-10-07
+## 60-second discovery polling (superseded) — 2026-10-07
 
-At the user's request, normal polling now waits 60 seconds after each successful
-read. API-failure backoff remains 10/20/40/60 minutes (or a longer `Retry-After`),
+This release mistakenly applied the requested vehicle-status interval to discovery,
+waiting 60 seconds after each successful list read. It is superseded by the correction
+below. API-failure backoff remained 10/20/40/60 minutes (or a longer `Retry-After`),
 and the forced-refresh cooldown remains ten minutes. The adapter still retrieves
 the vehicle list; real vehicle status and controls require later implementation
 and linked-vehicle verification. Push is deferred.
@@ -82,12 +83,37 @@ running and this service using the new image digest. Local .NET validation:
 Rollback: restore the connection-dashboard digest above in this project's Compose
 image and redeploy. Preserve the credentials, port binding and data volume.
 
+## Current release: discovery interval correction — 2026-10-07
+
+The user clarified that one-minute polling applies to vehicle status, not the
+vehicle list. Discovery is now restored to ten minutes, independent of vehicle
+count. The scheduler names this explicitly as `DiscoveryInterval`; the dashboard
+label reads `Fordonslista · 10 min`. The requested one-minute cached-status cadence
+is documented for the pending state adapter. It is not implemented by changing
+discovery cadence when a car appears.
+
+```text
+registry.local/hyundai-bridge:20261007-discovery-10m
+registry.local/hyundai-bridge@sha256:56ca4365859fde20825bc192f628ce0131cfc5cf2af15f41df7edf2a22a296f5
+```
+
+Deployed through Arcane by changing only this project's image digest. Successful
+discovery was observed at 07:32:44 UTC, with the next read scheduled at 07:42:44 UTC.
+MQTT was connected and the stored session reused, with zero HTTP/network errors
+or 429 responses. Local .NET tests: 62 passed; the two broker-dependent tests were
+skipped without a test broker. Vehicle-state retrieval and controls remain pending.
+
+Rollback: restore the connection-dashboard image (`eb799186…`) and redeploy this
+project, preserving credentials, port binding and data volume. That version also
+uses ten-minute discovery; the superseded minute-discovery image is not the
+recommended rollback.
+
 ## Install on the Docker host
 
 Copy the repository's `compose.yaml` into the stack directory. Create an owner-only `.env` (0600) with the existing MQTT broker connection and Hyundai credentials, following `.env.example`. Set:
 
 ```text
-HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:2c282b8c08eedad0ab57ea76d2d297e24d34059dc286e686d98b80de281c64d8
+HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:56ca4365859fde20825bc192f628ce0131cfc5cf2af15f41df7edf2a22a296f5
 BRIDGE_ID=home
 ```
 

@@ -91,12 +91,12 @@ public sealed class BridgeTests
         var schedule = new PollingSchedule(clock);
         Assert.Equal(TimeSpan.Zero, schedule.Remaining);
         schedule.Succeeded();
-        Assert.Equal(TimeSpan.FromMinutes(1), schedule.Remaining);
+        Assert.Equal(TimeSpan.FromMinutes(10), schedule.Remaining);
         schedule.Failed(); Assert.Equal(TimeSpan.FromMinutes(10), schedule.Remaining);
         schedule.Failed(); Assert.Equal(TimeSpan.FromMinutes(20), schedule.Remaining);
         schedule.Failed(); schedule.Failed(); Assert.Equal(TimeSpan.FromMinutes(60), schedule.Remaining);
         schedule.Failed(TimeSpan.FromHours(3)); Assert.Equal(TimeSpan.FromHours(3), schedule.Remaining);
-        schedule.Succeeded(); Assert.Equal(TimeSpan.FromMinutes(1), schedule.Remaining);
+        schedule.Succeeded(); Assert.Equal(TimeSpan.FromMinutes(10), schedule.Remaining);
     }
 
     [Fact]
