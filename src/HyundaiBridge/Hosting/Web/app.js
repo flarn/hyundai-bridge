@@ -11,7 +11,8 @@ function render(data) {
   pill('api-pill', data.apiReachable == null ? 'Inväntar hämtning' : data.apiReachable ? 'OK' : 'Kontaktfel', data.apiReachable);
   pill('mqtt-pill', data.mqttConnected ? 'Ansluten' : 'Frånkopplad', data.mqttConnected);
   text('mqtt-title', data.mqttConnected ? 'Transport ansluten' : 'Transport frånkopplad');
-  text('last-success', date(data.lastSuccessAt)); text('next-poll', date(data.nextPollAt));
+  text('last-success', date(data.lastSuccessAt));
+  text('next-poll', data.nextPollAt ? date(data.nextPollAt) : data.lastSuccessAt ? 'Ingen planerad' : 'Inväntar uppstart');
   text('request-count', number(data.requestCount)); text('failure-count', number(data.requestFailures));
   text('rate-limit-count', number(data.rateLimitedResponses));
   text('average-duration', data.averageDurationMs == null ? '—' : number(Math.round(data.averageDurationMs)) + ' ms');

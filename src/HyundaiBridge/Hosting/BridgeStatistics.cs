@@ -58,7 +58,7 @@ internal sealed class BridgeStatistics(TimeProvider time)
         }
     }
 
-    internal void PollScheduled(DateTimeOffset dueAt) { lock (gate) nextPollAt = dueAt; }
+    internal void PollScheduled(DateTimeOffset? dueAt) { lock (gate) nextPollAt = dueAt; }
 
     internal BridgeStatus Snapshot(bool mqttConnected)
     {

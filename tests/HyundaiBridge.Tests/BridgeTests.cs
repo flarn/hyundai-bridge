@@ -91,12 +91,33 @@ public sealed class BridgeTests
         var schedule = new PollingSchedule(clock);
         Assert.Equal(TimeSpan.Zero, schedule.Remaining);
         schedule.Succeeded();
-        Assert.Equal(TimeSpan.FromMinutes(10), schedule.Remaining);
+        Assert.Null(schedule.DueAt);
+        Assert.Equal(Timeout.InfiniteTimeSpan, schedule.Remaining);
         schedule.Failed(); Assert.Equal(TimeSpan.FromMinutes(10), schedule.Remaining);
         schedule.Failed(); Assert.Equal(TimeSpan.FromMinutes(20), schedule.Remaining);
         schedule.Failed(); schedule.Failed(); Assert.Equal(TimeSpan.FromMinutes(60), schedule.Remaining);
         schedule.Failed(TimeSpan.FromHours(3)); Assert.Equal(TimeSpan.FromHours(3), schedule.Remaining);
-        schedule.Succeeded(); Assert.Equal(TimeSpan.FromMinutes(10), schedule.Remaining);
+        schedule.Succeeded();
+        Assert.Null(schedule.DueAt);
+        Assert.Equal(Timeout.InfiniteTimeSpan, schedule.Remaining);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SuccessfulStartupDiscoveryStopsSchedulingForEmptyAndPopulatedGarages(bool hasVehicle)
+    {
+        using var fixture = new CommandFixture();
+        using var mqtt = fixture.Bridge();
+        var statistics = new BridgeStatistics(fixture.Clock);
+        var snapshot = hasVehicle ? TestVehicle.Snapshot() : new BridgeSnapshot([], []);
+        using var worker = new BridgeWorker(mqtt, _ => Task.FromResult(snapshot),
+            fixture.Gate, fixture.Clock, NullLogger<BridgeWorker>.Instance, statistics);
+        await worker.PollOnceAsync(CancellationToken.None);
+        Assert.Equal(hasVehicle ? 1 : 0, statistics.Snapshot(false).VehicleCount);
+        Assert.Null(statistics.Snapshot(false).NextPollAt);
+        fixture.Clock.Now += TimeSpan.FromDays(1);
+        Assert.Equal(Timeout.InfiniteTimeSpan, worker.Schedule.Remaining);
     }
 
     [Fact]

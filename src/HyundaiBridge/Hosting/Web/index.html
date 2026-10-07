@@ -14,7 +14,7 @@
     <div id="connection-error" class="notice" role="alert" hidden>Ingen kontakt med bryggan. Visade värden är från senaste lyckade uppdateringen av sidan.</div>
     <section class="connection-grid" aria-label="Anslutningar">
       <article class="connection-card primary"><div class="card-heading"><span>HYUNDAI API</span><span id="api-pill" class="pill">Inväntar hämtning</span></div><h2 id="api-title">Inväntar första hämtningen</h2><p id="api-description">Status visas när bryggan har kontaktat Hyundai.</p><div class="card-bottom"><span>Senaste lyckade hämtning</span><strong id="last-success">—</strong></div></article>
-      <article class="connection-card"><div class="card-heading"><span>MQTT</span><span id="mqtt-pill" class="pill">—</span></div><h2 id="mqtt-title">—</h2><p>Transporten till Home Assistant.</p><div class="card-bottom"><span>Nästa Hyundai-hämtning</span><strong id="next-poll">—</strong></div></article>
+      <article class="connection-card"><div class="card-heading"><span>MQTT</span><span id="mqtt-pill" class="pill">—</span></div><h2 id="mqtt-title">—</h2><p>Transporten till Home Assistant.</p><div class="card-bottom"><span>Nästa hämtning av fordonslista</span><strong id="next-poll">—</strong></div></article>
     </section>
     <section class="metrics" aria-label="API-statistik">
       <article><span>Hyundai-anrop</span><strong id="request-count">—</strong><small>Sedan bryggan startade</small></article>
@@ -24,7 +24,7 @@
     </section>
     <section class="details-grid">
       <article class="panel"><div class="section-title"><h2>Session</h2><span class="section-note">Automatisk förnyelse</span></div><dl><div><dt>Senaste sessionskälla</dt><dd id="session-source">—</dd></div><div><dt>Sessionen gäller till</dt><dd id="session-expiry">—</dd></div><div><dt>Inloggningar / förnyelser</dt><dd id="session-counts">—</dd></div></dl><p class="panel-note">Endast sessionens metadata visas.</p></article>
-      <article class="panel"><div class="section-title"><h2>Hämtning</h2><span class="section-note">Fordonslista · 10 min</span></div><dl><div><dt>Kopplade bilar</dt><dd id="vehicle-count">—</dd></div><div><dt>Senaste misslyckade hämtning</dt><dd id="last-failure">—</dd></div><div><dt>Senaste feltyp</dt><dd id="failure-type">—</dd></div></dl><p class="panel-note">Vid fel väntar bryggan längre före nästa försök.</p></article>
+      <article class="panel"><div class="section-title"><h2>Hämtning</h2><span class="section-note">Fordonslista · Vid uppstart</span></div><dl><div><dt>Kopplade bilar</dt><dd id="vehicle-count">—</dd></div><div><dt>Senaste misslyckade hämtning</dt><dd id="last-failure">—</dd></div><div><dt>Senaste feltyp</dt><dd id="failure-type">—</dd></div></dl><p class="panel-note">Vid fel väntar bryggan längre före nästa försök.</p></article>
     </section>
     <section class="panel requests"><div class="section-title"><div><h2>Senaste anrop</h2><p>De senaste 20 HTTP-anropen till Hyundai, inklusive autentisering.</p></div><span class="section-note">Senaste först</span></div><div class="table-wrap"><table><thead><tr><th scope="col">Tid</th><th scope="col">Operation</th><th scope="col">HTTP / utfall</th><th scope="col">Svarstid</th></tr></thead><tbody id="request-rows"><tr><td colspan="4" class="empty">Inga registrerade anrop ännu.</td></tr></tbody></table></div></section>
     <footer><span id="started-at">Statistik sedan —</span><span>Uppdateras var femte sekund · inga extra Hyundai-anrop</span></footer>
