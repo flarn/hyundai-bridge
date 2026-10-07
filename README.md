@@ -33,7 +33,7 @@ docker compose up -d
 
 ## Run discovery
 
-Requires .NET 10 and a European MyHyundai account with a linked vehicle. Set `HYUNDAI_USERNAME`, `HYUNDAI_PASSWORD`, `HYUNDAI_REGION=EU` and `HYUNDAI_SESSION_DIRECTORY` using your local secret manager or process environment. Do not put credentials in command arguments or Git. `.env.example` documents the variables; no automatic `.env` loading is performed.
+Requires .NET 11 RC1 (SDK `11.0.100-rc.1.26425.128`, pinned in `global.json`) and a European MyHyundai account with a linked vehicle. Set `HYUNDAI_USERNAME`, `HYUNDAI_PASSWORD`, `HYUNDAI_REGION=EU` and `HYUNDAI_SESSION_DIRECTORY` using your local secret manager or process environment. Do not put credentials in command arguments or Git. `.env.example` documents the variables; no automatic `.env` loading is performed.
 
 ```sh
 dotnet run --project src/HyundaiBridge -- --discover

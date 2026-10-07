@@ -10,7 +10,7 @@ Normalized state publication and command execution are verified using synthetic 
 
 ## Configuration and running
 
-Requires .NET 10 on Linux/macOS, or Docker. The application reads process environment variables; it does not load `.env` itself.
+Requires .NET 11 RC1 (SDK `11.0.100-rc.1.26425.128`, pinned in `global.json`) on Linux/macOS, or Docker. The application reads process environment variables; it does not load `.env` itself.
 
 | Variable | Required / default |
 |---|---|
