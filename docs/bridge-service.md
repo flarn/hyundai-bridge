@@ -33,6 +33,8 @@ No arguments also starts the service. `--discover` retains the one-shot read-onl
 
 ### Docker / Compose
 
+For the NUC Docker host and published image, see [NUC deployment](nuc-deployment.md).
+
 The supplied [compose.yaml](../compose.yaml) uses your existing broker, a private named data volume and `restart: unless-stopped`. It runs as `app`, with a read-only root filesystem, temporary `/tmp`, dropped capabilities and no new privileges. No HA add-on or additional production broker is required. Use a reachable LAN/DNS address, or attach the service to the broker's existing Docker network.
 
 ```sh

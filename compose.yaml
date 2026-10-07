@@ -1,7 +1,7 @@
 services:
   hyundai-bridge:
     build: .
-    image: hyundai-bridge:local
+    image: ${HYUNDAI_BRIDGE_IMAGE:-hyundai-bridge:local}
     restart: unless-stopped
     init: true
     read_only: true
