@@ -238,7 +238,7 @@ credentials, port mapping and persistent volume, then redeploy only this project
 Copy the repository's `compose.yaml` into the stack directory. Create an owner-only `.env` (0600) with the existing MQTT broker connection and Hyundai credentials, following `.env.example`. Set:
 
 ```text
-HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:9c56d106ac65feee8b4a2d1ce652284b6479e572bdee21f9b950ce3963a0e401
+HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:fed15332e21e9a609d027cc2b9af9e3f0f9c0a61c7cc506eede12ac9b6fefb8a
 BRIDGE_ID=home
 ```
 
@@ -296,3 +296,34 @@ Positive charging values remain to be verified while the real vehicle is chargin
 
 Rollback: restore the preceding `15edd6f4…` image digest and redeploy only this
 project, preserving its data volume and secret configuration.
+
+## Driving measurements deployment — 2026-10-08
+
+Published `registry.local/hyundai-bridge:20261008-driving-status`, pinned to
+`sha256:fed15332e21e9a609d027cc2b9af9e3f0f9c0a61c7cc506eede12ac9b6fefb8a`,
+and redeployed only the existing Hyundai Arcane project. Container
+`fc95de3bf9f7efbfa6c30b2d28d03c35dbb18c718e9cfce02a38423f83282bd2` started at
+06:56:32 UTC. Its stored session was reused without login or renewal; one vehicle,
+MQTT connected, API reachable, zero request failures. Discovery is finished,
+next cached status read is 07:06:33 UTC, ten minutes after retrieval.
+
+A temporary MQTT-only observer verified retained normalized state, metadata and
+availability. Tire pressures are 3.0/3.0/3.0/2.9 bar, low-pressure warning false,
+cabin fan off, battery min/max temperatures 10/10 °C, remaining battery energy
+75.78 kWh, and all four side windows closed. These thirteen newly mapped fields
+are advertised. Existing climate target is currently null/OFF and therefore not
+advertised after this restart; the new read-only target sensor will appear on a
+supported numerical observation. No command capabilities were enabled.
+
+Validation: 107 .NET tests passed (three optional broker/HA checks skipped), 79 HA
+tests passed (two optional broker checks skipped), Python lint and diff checks
+passed. These tests cover real HA platform classes/registries with synthetic MQTT
+state, mapping/scaling, nullable values, serialization and contract validation.
+Production retained MQTT data was inspected, but production HA was not upgraded
+or read back in this step. HA component version 0.4.0 is available from GitHub;
+update via HACS and restart HA to load the added entities.
+
+Credentials, persistent volume, host port and security settings were preserved.
+No wake/control call or extra status endpoint was added. The temporary observer
+was removed and transfer server stopped. Rollback restores the previous
+`9c56d106…` image digest and redeploys only this project with its existing volume.
