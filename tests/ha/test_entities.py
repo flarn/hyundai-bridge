@@ -10,7 +10,7 @@ from .conftest import announce, send
 async def test_native_entities_and_single_vehicle_device(hass, bridge):
     registry = er.async_get(hass)
     entries = er.async_entries_for_config_entry(registry, bridge.entry_id)
-    assert len(entries) == 15
+    assert len(entries) == 16
     assert all(entry.platform == "hyundai_bridge" for entry in entries)
     assert len({entry.device_id for entry in entries}) == 1
     vehicle = dr.async_get(hass).async_get_device_by_identifier(
@@ -31,6 +31,7 @@ async def test_native_entities_and_single_vehicle_device(hass, bridge):
         )
         for entry in entries
     }
+    assert states["targetTemperatureCelsius"].state == "21"
     assert states["batteryPercent"].state == "73"
     assert states["batteryPercent"].attributes["device_class"] == "battery"
     assert states["batteryPercent"].attributes["state_class"] == "measurement"
@@ -109,7 +110,7 @@ async def test_manifest_capabilities_control_entities_and_identity(
     manifest["vehicles"].append(added)
     await announce(hass, manifest)
     entries = er.async_entries_for_config_entry(registry, bridge.entry_id)
-    assert len(entries) == 17
+    assert len(entries) == 18
     assert {e.domain for e in entries if e.unique_id.startswith(added["vin"])} == {
         "sensor",
         "button",
@@ -247,6 +248,70 @@ async def test_charging_openings_and_source_timestamp_are_native_entities(
     timestamp = hass.states.get(entity_ids["vehicleUpdatedAt"])
     assert timestamp.state == "2026-10-07T18:00:00+00:00"
     assert timestamp.attributes["bridge_updated_at"] == "2026-10-07T20:00:00Z"
+    await send(hass, "state", {**vehicle_state, **dict.fromkeys(fields)})
+    for entity_id in entity_ids.values():
+        assert hass.states.get(entity_id).state == "unknown"
+
+
+async def test_driving_measurements_are_native_read_only_nullable_entities(
+    hass, bridge, manifest, vehicle_state
+):
+    fields = {
+        "frontLeftTirePressureBar": 3.0,
+        "frontRightTirePressureBar": 3.1,
+        "rearLeftTirePressureBar": 2.9,
+        "rearRightTirePressureBar": 2.8,
+        "targetTemperatureCelsius": 22,
+        "batteryMinTemperatureCelsius": 9,
+        "batteryMaxTemperatureCelsius": 10,
+        "batteryEnergyKwh": 75.798,
+        "isTirePressureLow": True,
+        "isCabinFanOn": True,
+        "isFrontLeftWindowOpen": True,
+        "isFrontRightWindowOpen": False,
+        "isRearLeftWindowOpen": False,
+        "isRearRightWindowOpen": True,
+    }
+    # This is a read-only vehicle: no command capability may be inferred from state.
+    caps = manifest["vehicles"][0]["capabilities"]
+    caps["stateFields"] = list(fields)
+    caps["commands"] = []
+    caps["climate"] = caps["chargeLimits"] = None
+    await announce(hass, manifest)
+    await send(hass, "state", {**vehicle_state, **fields})
+    registry = er.async_get(hass)
+    entity_ids = {}
+    for field, value in fields.items():
+        binary = field.startswith("is")
+        domain = "binary_sensor" if binary else "sensor"
+        entity_ids[field] = registry.async_get_entity_id(
+            domain, "hyundai_bridge", "KMH00000000000001_" + field
+        )
+        state = hass.states.get(entity_ids[field])
+        if binary:
+            assert state.state == ("on" if value else "off")
+            expected_class = (
+                "problem"
+                if field == "isTirePressureLow"
+                else "running"
+                if field == "isCabinFanOn"
+                else "window"
+            )
+        else:
+            assert float(state.state) == value
+            expected_class, unit = (
+                ("pressure", "bar")
+                if "PressureBar" in field
+                else ("energy_storage", "kWh")
+                if field == "batteryEnergyKwh"
+                else ("temperature", "°C")
+            )
+            assert state.attributes["unit_of_measurement"] == unit
+            assert state.attributes["state_class"] == "measurement"
+        assert state.attributes["device_class"] == expected_class
+    entries = er.async_entries_for_config_entry(registry, bridge.entry_id)
+    assert len({entry.device_id for entry in entries}) == 1
+    assert not bridge.runtime_data.vehicles["example-ev"].commands
     await send(hass, "state", {**vehicle_state, **dict.fromkeys(fields)})
     for entity_id in entity_ids.values():
         assert hass.states.get(entity_id).state == "unknown"

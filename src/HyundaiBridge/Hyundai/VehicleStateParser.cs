@@ -20,6 +20,9 @@ internal static class VehicleStateParser
         range = unit switch { 1 => range, 2 or 3 => range * 1.609344, _ => null };
         var remaining = Number(At(state, "Green.ChargingInformation.Charging.RemainTime"));
         var target = Temperature(At(state, "Cabin.HVAC.Row1.Driver.Temperature"));
+        var pressureUnit = Number(At(state, "Chassis.Axle.Tire.PressureUnit"));
+        var fanSpeed = Number(At(state, "Cabin.HVAC.Row1.Driver.Blower.SpeedLevel"));
+        var energy = At(state, "Green.BatteryManagement.BatteryRemain");
         var latitude = Number(At(state, "Location.GeoCoord.Latitude"));
         var longitude = Number(At(state, "Location.GeoCoord.Longitude"));
         if (latitude is not (>= -90 and <= 90) || longitude is not (>= -180 and <= 180))
@@ -32,6 +35,21 @@ internal static class VehicleStateParser
                 ? (int)Math.Truncate(soc) : null,
             AuxiliaryBatteryPercent = Percent(At(state, "Electronics.Battery.Level")),
             EstimatedRangeKm = range >= 0 ? range : null,
+            FrontLeftTirePressureBar = PressureBar(At(state, "Chassis.Axle.Row1.Left.Tire.Pressure"), pressureUnit),
+            FrontRightTirePressureBar = PressureBar(At(state, "Chassis.Axle.Row1.Right.Tire.Pressure"), pressureUnit),
+            RearLeftTirePressureBar = PressureBar(At(state, "Chassis.Axle.Row2.Left.Tire.Pressure"), pressureUnit),
+            RearRightTirePressureBar = PressureBar(At(state, "Chassis.Axle.Row2.Right.Tire.Pressure"), pressureUnit),
+            IsTirePressureLow = Bool(At(state, "Chassis.Axle.Tire.PressureLow")),
+            IsCabinFanOn = fanSpeed >= 0 && fanSpeed == Math.Truncate(fanSpeed.Value) ? fanSpeed > 0 : null,
+            BatteryMinTemperatureCelsius = Number(At(state, "Green.BatteryManagement.Temperature.Min.Raw")),
+            BatteryMaxTemperatureCelsius = Number(At(state, "Green.BatteryManagement.Temperature.Max.Raw")),
+            // Reported remaining energy, not a claim of usable energy or battery health.
+            BatteryEnergyKwh = At(energy, "Unit").ValueKind == JsonValueKind.String && At(energy, "Unit").GetString() == "kJ"
+                && Number(At(energy, "Value")) is >= 0 and var kilojoules ? kilojoules / 3600 : null,
+            IsFrontLeftWindowOpen = Bool(At(state, "Cabin.Window.Row1.Driver.Open")),
+            IsFrontRightWindowOpen = Bool(At(state, "Cabin.Window.Row1.Passenger.Open")),
+            IsRearLeftWindowOpen = Bool(At(state, "Cabin.Window.Row2.Left.Open")),
+            IsRearRightWindowOpen = Bool(At(state, "Cabin.Window.Row2.Right.Open")),
             IsCharging = remaining >= 0 ? remaining > 0 : null,
             IsPluggedIn = Bool(At(state, "Green.ChargingInformation.ConnectorFastening.State")),
             IsLocked = locked,
@@ -73,6 +91,12 @@ internal static class VehicleStateParser
         if (element.ValueKind == JsonValueKind.String && double.TryParse(element.GetString(), NumberStyles.Float,
             CultureInfo.InvariantCulture, out value) && double.IsFinite(value)) return value;
         return null;
+    }
+    private static double? PressureBar(JsonElement element, double? unit)
+    {
+        var raw = Number(element);
+        if (raw is null or < 0 or 255) return null; // 255 is the CCS2 no-reading sentinel.
+        return unit switch { 0 => raw * 0.0689475729, 1 => raw * 0.05, 2 => raw * 0.1, _ => null };
     }
     private static int? Percent(JsonElement element) => Number(element) is >= 0 and <= 100 and var n && n == Math.Truncate(n) ? (int)n : null;
     private static bool? Bool(JsonElement element) => element.ValueKind switch

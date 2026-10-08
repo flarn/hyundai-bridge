@@ -52,6 +52,30 @@
       },
       "remaining_charge_time": {
         "name": "Remaining charge time"
+      },
+      "front_left_tire_pressure": {
+        "name": "Front left tire pressure"
+      },
+      "front_right_tire_pressure": {
+        "name": "Front right tire pressure"
+      },
+      "rear_left_tire_pressure": {
+        "name": "Rear left tire pressure"
+      },
+      "rear_right_tire_pressure": {
+        "name": "Rear right tire pressure"
+      },
+      "target_temperature": {
+        "name": "Climate target temperature"
+      },
+      "battery_min_temperature": {
+        "name": "Battery minimum temperature"
+      },
+      "battery_max_temperature": {
+        "name": "Battery maximum temperature"
+      },
+      "battery_energy": {
+        "name": "Remaining battery energy"
       }
     },
     "binary_sensor": {
@@ -84,6 +108,24 @@
       },
       "sunroof": {
         "name": "Sunroof"
+      },
+      "tire_pressure_low": {
+        "name": "Low tire pressure"
+      },
+      "cabin_fan": {
+        "name": "Cabin fan"
+      },
+      "front_left_window": {
+        "name": "Front left window"
+      },
+      "front_right_window": {
+        "name": "Front right window"
+      },
+      "rear_left_window": {
+        "name": "Rear left window"
+      },
+      "rear_right_window": {
+        "name": "Rear right window"
       }
     },
     "number": {

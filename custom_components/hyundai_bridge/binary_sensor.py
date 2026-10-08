@@ -10,6 +10,37 @@ from .entity import BridgeEntity, setup_entities
 
 DESCRIPTIONS = (
     BinarySensorEntityDescription(
+        key="isTirePressureLow",
+        translation_key="tire_pressure_low",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    BinarySensorEntityDescription(
+        key="isCabinFanOn",
+        translation_key="cabin_fan",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        icon="mdi:fan",
+    ),
+    BinarySensorEntityDescription(
+        key="isFrontLeftWindowOpen",
+        translation_key="front_left_window",
+        device_class=BinarySensorDeviceClass.WINDOW,
+    ),
+    BinarySensorEntityDescription(
+        key="isFrontRightWindowOpen",
+        translation_key="front_right_window",
+        device_class=BinarySensorDeviceClass.WINDOW,
+    ),
+    BinarySensorEntityDescription(
+        key="isRearLeftWindowOpen",
+        translation_key="rear_left_window",
+        device_class=BinarySensorDeviceClass.WINDOW,
+    ),
+    BinarySensorEntityDescription(
+        key="isRearRightWindowOpen",
+        translation_key="rear_right_window",
+        device_class=BinarySensorDeviceClass.WINDOW,
+    ),
+    BinarySensorEntityDescription(
         key="isChargePortOpen",
         translation_key="charge_port",
         device_class=BinarySensorDeviceClass.OPENING,

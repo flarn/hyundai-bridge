@@ -9,6 +9,12 @@ from typing import Any
 
 TOPIC_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 BOOLEAN_FIELDS = {
+    "isTirePressureLow",
+    "isCabinFanOn",
+    "isFrontLeftWindowOpen",
+    "isFrontRightWindowOpen",
+    "isRearLeftWindowOpen",
+    "isRearRightWindowOpen",
     "isChargePortOpen",
     "isSunroofOpen",
     "isCharging",
@@ -30,6 +36,13 @@ PERCENT_FIELDS = {
     "dcChargeLimitPercent",
 }
 NUMBER_FIELDS = {
+    "frontLeftTirePressureBar",
+    "frontRightTirePressureBar",
+    "rearLeftTirePressureBar",
+    "rearRightTirePressureBar",
+    "batteryMinTemperatureCelsius",
+    "batteryMaxTemperatureCelsius",
+    "batteryEnergyKwh",
     "chargingPowerKw",
     "remainingChargeTimeMinutes",
     "estimatedRangeKm",
@@ -189,6 +202,15 @@ def parse_state(payload: str | bytes, vehicle: VehicleInfo) -> dict[str, Any]:
     for field in ("chargingPowerKw", "remainingChargeTimeMinutes"):
         if data.get(field) is not None and data[field] < 0:
             raise ValueError("Invalid charging measurement")
+    for field in (
+        "batteryEnergyKwh",
+        "frontLeftTirePressureBar",
+        "frontRightTirePressureBar",
+        "rearLeftTirePressureBar",
+        "rearRightTirePressureBar",
+    ):
+        if data.get(field) is not None and data[field] < 0:
+            raise ValueError("Invalid nonnegative measurement")
     for field, maximum in (("latitude", 90), ("longitude", 180)):
         if data.get(field) is not None and abs(data[field]) > maximum:
             raise ValueError("Invalid coordinates")

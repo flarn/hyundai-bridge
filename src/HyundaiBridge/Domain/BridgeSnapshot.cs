@@ -20,6 +20,19 @@ internal sealed record VehicleState
     public int? BatteryPercent { get; init; }
     public int? AuxiliaryBatteryPercent { get; init; }
     public double? EstimatedRangeKm { get; init; }
+    public double? FrontLeftTirePressureBar { get; init; }
+    public double? FrontRightTirePressureBar { get; init; }
+    public double? RearLeftTirePressureBar { get; init; }
+    public double? RearRightTirePressureBar { get; init; }
+    public bool? IsTirePressureLow { get; init; }
+    public bool? IsCabinFanOn { get; init; }
+    public double? BatteryMinTemperatureCelsius { get; init; }
+    public double? BatteryMaxTemperatureCelsius { get; init; }
+    public double? BatteryEnergyKwh { get; init; }
+    public bool? IsFrontLeftWindowOpen { get; init; }
+    public bool? IsFrontRightWindowOpen { get; init; }
+    public bool? IsRearLeftWindowOpen { get; init; }
+    public bool? IsRearRightWindowOpen { get; init; }
     public bool? IsCharging { get; init; }
     public bool? IsPluggedIn { get; init; }
     public bool? IsLocked { get; init; }

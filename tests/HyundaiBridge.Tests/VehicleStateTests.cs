@@ -161,6 +161,71 @@ public sealed class VehicleStateTests
         Assert.Throws<FormatException>(() => HyundaiBridge.Mqtt.Contract.ValidateState(state with { RemainingChargeTimeMinutes = -1 }));
     }
 
+    [Fact]
+    public void RequestedDrivingMeasurementsMapWithoutInventingClimateOrBatteryHealth()
+    {
+        using var document = JsonDocument.Parse("""
+            {"state":{"Vehicle":{
+             "Chassis":{"Axle":{"Tire":{"PressureUnit":2,"PressureLow":1},
+              "Row1":{"Left":{"Tire":{"Pressure":30}},"Right":{"Tire":{"Pressure":31}}},
+              "Row2":{"Left":{"Tire":{"Pressure":29}},"Right":{"Tire":{"Pressure":28}}}}},
+             "Green":{"BatteryManagement":{"BatteryRemain":{"Value":272872.8,"Unit":"kJ"},
+              "Temperature":{"Min":{"Raw":9,"Decimal":9.6},"Max":{"Raw":10,"Decimal":10.2}}}},
+             "Cabin":{"HVAC":{"Row1":{"Driver":{"Blower":{"SpeedLevel":3},"Temperature":{"Value":"22.0","Unit":0}}}},
+              "Window":{"Row1":{"Driver":{"Open":1},"Passenger":{"Open":0}},"Row2":{"Left":{"Open":0},"Right":{"Open":1}}}}
+            }}}
+            """);
+        var state = VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow);
+        Assert.Equal(3, state.FrontLeftTirePressureBar);
+        Assert.Equal(3.1, state.FrontRightTirePressureBar!.Value, 6);
+        Assert.Equal(2.9, state.RearLeftTirePressureBar!.Value, 6);
+        Assert.Equal(2.8, state.RearRightTirePressureBar!.Value, 6);
+        Assert.True(state.IsTirePressureLow); Assert.True(state.IsCabinFanOn);
+        Assert.Equal(22, state.TargetTemperatureCelsius);
+        Assert.Null(state.CabinTemperatureCelsius); Assert.Null(state.IsClimateOn);
+        Assert.Equal(9, state.BatteryMinTemperatureCelsius); Assert.Equal(10, state.BatteryMaxTemperatureCelsius);
+        Assert.Equal(75.798, state.BatteryEnergyKwh!.Value, 6);
+        Assert.True(state.IsFrontLeftWindowOpen); Assert.False(state.IsFrontRightWindowOpen);
+        Assert.False(state.IsRearLeftWindowOpen); Assert.True(state.IsRearRightWindowOpen);
+        using var normalized = JsonDocument.Parse(HyundaiBridge.Mqtt.Contract.Serialize(state));
+        Assert.Equal(75.798, normalized.RootElement.GetProperty("batteryEnergyKwh").GetDouble(), 6);
+        Assert.True(normalized.RootElement.GetProperty("isCabinFanOn").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData(0, 38, 2.6200077702)]
+    [InlineData(1, 60, 3.0)]
+    [InlineData(2, 30, 3.0)]
+    [InlineData(2, 0, 0.0)]
+    [InlineData(2, 255, null)]
+    [InlineData(2, -1, null)]
+    [InlineData(255, 30, null)]
+    public void TirePressureRespectsScaleAndNoReadingSentinel(int unit, double raw, double? expected)
+    {
+        var json = JsonSerializer.Serialize(new { state = new { Vehicle = new { Chassis = new { Axle = new {
+            Tire = new { PressureUnit = unit }, Row1 = new { Left = new { Tire = new { Pressure = raw } } }
+        } } } } });
+        using var document = JsonDocument.Parse(json);
+        var actual = VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow).FrontLeftTirePressureBar;
+        if (expected is null) Assert.Null(actual);
+        else Assert.Equal(expected.Value, actual!.Value, 8);
+    }
+
+    [Theory]
+    [InlineData("{\"Version\":1}")]
+    [InlineData("{\"Cabin\":{\"HVAC\":{\"Row1\":{\"Driver\":{\"Blower\":{\"SpeedLevel\":-1}}}},\"Window\":{\"Row1\":{\"Driver\":{\"Open\":255}}}},\"Green\":{\"BatteryManagement\":{\"BatteryRemain\":{\"Value\":100,\"Unit\":\"unknown\"}}}}")]
+    public void MissingUnsupportedDrivingMeasurementsRemainUnknown(string vehicleJson)
+    {
+        using var document = JsonDocument.Parse("{\"state\":{\"Vehicle\":" + vehicleJson + "}}");
+        var state = VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow);
+        Assert.Null(state.FrontLeftTirePressureBar); Assert.Null(state.IsTirePressureLow);
+        Assert.Null(state.BatteryEnergyKwh); Assert.Null(state.BatteryMinTemperatureCelsius);
+        Assert.Null(state.BatteryMaxTemperatureCelsius); Assert.Null(state.IsCabinFanOn);
+        Assert.Null(state.IsFrontLeftWindowOpen);
+        Assert.Throws<FormatException>(() => HyundaiBridge.Mqtt.Contract.ValidateState(state with { BatteryEnergyKwh = -1 }));
+        Assert.Throws<FormatException>(() => HyundaiBridge.Mqtt.Contract.ValidateState(state with { FrontLeftTirePressureBar = -1 }));
+    }
+
     [Theory]
     [InlineData("{}")]
     [InlineData("{\"state\":{\"Vehicle\":{}}}")]

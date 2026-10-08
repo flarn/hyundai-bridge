@@ -52,6 +52,30 @@
       },
       "remaining_charge_time": {
         "name": "Återstående laddtid"
+      },
+      "front_left_tire_pressure": {
+        "name": "Däcktryck vänster fram"
+      },
+      "front_right_tire_pressure": {
+        "name": "Däcktryck höger fram"
+      },
+      "rear_left_tire_pressure": {
+        "name": "Däcktryck vänster bak"
+      },
+      "rear_right_tire_pressure": {
+        "name": "Däcktryck höger bak"
+      },
+      "target_temperature": {
+        "name": "Klimatbörvärde"
+      },
+      "battery_min_temperature": {
+        "name": "Batteritemperatur min"
+      },
+      "battery_max_temperature": {
+        "name": "Batteritemperatur max"
+      },
+      "battery_energy": {
+        "name": "Kvarvarande batterienergi"
       }
     },
     "binary_sensor": {
@@ -84,6 +108,24 @@
       },
       "sunroof": {
         "name": "Soltak"
+      },
+      "tire_pressure_low": {
+        "name": "Lågt däcktryck"
+      },
+      "cabin_fan": {
+        "name": "Kupéfläkt"
+      },
+      "front_left_window": {
+        "name": "Sidoruta vänster fram"
+      },
+      "front_right_window": {
+        "name": "Sidoruta höger fram"
+      },
+      "rear_left_window": {
+        "name": "Sidoruta vänster bak"
+      },
+      "rear_right_window": {
+        "name": "Sidoruta höger bak"
       }
     },
     "number": {

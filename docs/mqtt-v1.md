@@ -31,6 +31,8 @@ Optional additive v1 fields: `auxiliaryBatteryPercent` (integer 0–100, 12-V ba
 
 Additional optional fields are `isChargePortOpen` and `isSunroofOpen` (true open, false closed), `chargingPowerKw` (nonnegative kW) and `remainingChargeTimeMinutes` (nonnegative minutes remaining in the current charging session). Zero is a reported value; absent/null is unknown. These create opening/window, power and duration entities only when advertised. `vehicleUpdatedAt` can also be advertised for a native timestamp sensor; it uses the vehicle observation time, never `bridgeUpdatedAt`. Existing v1 consumers can ignore additive fields.
 
+Further optional driving fields: `frontLeftTirePressureBar`, `frontRightTirePressureBar`, `rearLeftTirePressureBar`, `rearRightTirePressureBar` (nonnegative pressure in bar), `isTirePressureLow` (vehicle-reported aggregate warning), `isCabinFanOn` (blower activity, not remote HVAC or heating/cooling action), `batteryMinTemperatureCelsius`, `batteryMaxTemperatureCelsius`, `batteryEnergyKwh` (nonnegative vehicle-reported remaining energy, not usable capacity or state of health), and `isFrontLeftWindowOpen`, `isFrontRightWindowOpen`, `isRearLeftWindowOpen`, `isRearRightWindowOpen` (opening booleans). All remain nullable and require advertised capabilities. HA also exposes existing `targetTemperatureCelsius` as a read-only temperature sensor, separate from measured cabin temperature and command support.
+
 ## Commands
 
 Each command carries a new UUID `commandId`. No optimistic state updates are performed.

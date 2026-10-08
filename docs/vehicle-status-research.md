@@ -123,3 +123,39 @@ Ordinary headlamp on/off semantics remain unverified.
 
 Source: [Hyundai-Kia-Connect EU adapter](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/daca6876e98d33815b8c7611fc38f5ec24c8355a/hyundai_kia_connect_api/GspaApiEU.py)
 and [normalized upstream Vehicle units](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/daca6876e98d33815b8c7611fc38f5ec24c8355a/hyundai_kia_connect_api/Vehicle.py).
+
+## Requested driving measurements — 2026-10-08
+
+The cached response retrieved at 06:22:15 UTC now contains numerical driver target
+22 °C and blower level 3; the later 06:52:17 UTC response reports OFF and level 0.
+Expose the existing target as a read-only temperature sensor and blower activity
+as `isCabinFanOn`. Do not infer measured cabin temperature, remote climate state,
+HVAC action or writable capabilities. Nonnegative integral blower levels yield
+activity (>0); missing/unsupported data stays unknown.
+
+Four tire pressure raw readings 30/30/30/29 with PressureUnit=2 map to 3.0/3.0/3.0/2.9
+bar. The current community constants encode PSI=0 (raw psi), kPa=1 (raw ×5 kPa),
+bar=2 (raw ×0.1 bar). Normalize all supported units to bar. Raw 255 is the no-reading
+sentinel, raw zero is a possible reading, unsupported unit codes remain unknown.
+The aggregate PressureLow field is a vehicle-reported warning, without an invented
+pressure threshold. Conversion follows upstream and should be compared with the
+car display; this step does not certify the physical TPMS reading.
+
+Battery temperatures use the upstream-mapped Min.Raw/Max.Raw Celsius fields (9/10
+in the inspected response). Decimal subfields are not substituted without verifying
+their semantics. BatteryRemain.Value=272872.8 with explicit Unit=kJ converts to
+75.798 kWh. This is reported remaining battery energy, not a guarantee of usable
+energy, nominal capacity or health. Missing/unknown unit or negative energy is null.
+Cabin.Window Open values map independently for four windows; verified boolean/0/1
+codes are supported, other codes remain unknown. The inspected response has all
+four closed.
+
+AverageFuelEconomy values and Unit=5 remain unnormalized until the unit is verified.
+No additional API request, wake or command is introduced; all fields are from the
+existing stored-status response. Native entity classes, units, unknown states and
+absence of command capabilities are tested through HA's actual state machine.
+
+Reference: the current upstream
+[pressure scale definitions](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/master/hyundai_kia_connect_api/const.py),
+[no-reading sentinel](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/master/hyundai_kia_connect_api/utils.py)
+and [CCS2 field mapping](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/master/hyundai_kia_connect_api/GspaApiEU.py), inspected 2026-10-08.
