@@ -159,3 +159,22 @@ Reference: the current upstream
 [pressure scale definitions](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/master/hyundai_kia_connect_api/const.py),
 [no-reading sentinel](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/master/hyundai_kia_connect_api/utils.py)
 and [CCS2 field mapping](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/blob/master/hyundai_kia_connect_api/GspaApiEU.py), inspected 2026-10-08.
+
+## Live remote HVAC observation and requested entities — 2026-10-08
+
+The user manually started HVAC. Before the start, the cached response retrieved at
+08:56:38 UTC reported target OFF, blower level 0 and RemoteClimateDetails=0.
+The normal stored-status read at 09:06:38 UTC reported target 24 °C, blower level 5
+and RemoteClimateDetails=1, with an advanced Vehicle.Date. No bridge remote command,
+wake or forced refresh was issued for this observation.
+
+Map the observed remote codes 0/1 to existing normalized `isClimateOn` false/true;
+other values remain unknown. This indication is independent of blower activity
+and does not report a heating/cooling action. HA exposes a read-only Remote climate
+binary sensor. The new nullable `cabinFanSpeedLevel` carries a nonnegative integral
+blower level with no invented unit or maximum, alongside existing fan activity and
+target temperature. Missing/invalid levels remain unknown. Commands stay empty;
+a writable ClimateEntity still requires verified start/stop support and bounds.
+
+Tests cover observed on/off, unsupported codes, invalid/missing levels, normalized
+serialization, native HA states and read-only operation without command capabilities.

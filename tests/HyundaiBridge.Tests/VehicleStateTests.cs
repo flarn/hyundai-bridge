@@ -227,6 +227,42 @@ public sealed class VehicleStateTests
     }
 
     [Theory]
+    [InlineData(1, 5, true, true)]
+    [InlineData(0, 0, false, false)]
+    [InlineData(2, 5, null, true)]
+    [InlineData(255, -1, null, null)]
+    public void RemoteClimateAndFanLevelUseIndependentObservedFields(int remoteCode, int fanLevel, bool? climateOn, bool? fanOn)
+    {
+        var json = JsonSerializer.Serialize(new { state = new { Vehicle = new {
+            Green = new { Electric = new { Climate = new { RemoteClimateDetails = remoteCode } } },
+            Cabin = new { HVAC = new { Row1 = new { Driver = new {
+                Temperature = new { Value = remoteCode == 0 ? "OFF" : "24.0", Unit = 0 },
+                Blower = new { SpeedLevel = fanLevel }
+            } } } }
+        } } });
+        using var document = JsonDocument.Parse(json);
+        var state = VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow);
+        Assert.Equal(climateOn, state.IsClimateOn); Assert.Equal(fanOn, state.IsCabinFanOn);
+        Assert.Equal(fanLevel >= 0 ? fanLevel : (int?)null, state.CabinFanSpeedLevel);
+        Assert.Equal(remoteCode == 0 ? null : (double?)24, state.TargetTemperatureCelsius);
+        Assert.Null(state.CabinTemperatureCelsius);
+        using var normalized = JsonDocument.Parse(HyundaiBridge.Mqtt.Contract.Serialize(state));
+        if (climateOn is not null) Assert.Equal(climateOn, normalized.RootElement.GetProperty("isClimateOn").GetBoolean());
+        else Assert.Equal(JsonValueKind.Null, normalized.RootElement.GetProperty("isClimateOn").ValueKind);
+        Assert.Throws<FormatException>(() => HyundaiBridge.Mqtt.Contract.ValidateState(state with { CabinFanSpeedLevel = -1 }));
+    }
+
+    [Fact]
+    public void FractionalFanLevelAndMissingRemoteClimateStayUnknown()
+    {
+        using var document = JsonDocument.Parse("""
+            {"state":{"Vehicle":{"Cabin":{"HVAC":{"Row1":{"Driver":{"Blower":{"SpeedLevel":2.5}}}}}}}}
+            """);
+        var state = VehicleStateParser.Parse(document.RootElement, Vehicle, DateTimeOffset.UtcNow);
+        Assert.Null(state.CabinFanSpeedLevel); Assert.Null(state.IsCabinFanOn); Assert.Null(state.IsClimateOn);
+    }
+
+    [Theory]
     [InlineData("{}")]
     [InlineData("{\"state\":{\"Vehicle\":{}}}")]
     public void ChangedEnvelopeIsAnError(string json)

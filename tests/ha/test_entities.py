@@ -10,7 +10,7 @@ from .conftest import announce, send
 async def test_native_entities_and_single_vehicle_device(hass, bridge):
     registry = er.async_get(hass)
     entries = er.async_entries_for_config_entry(registry, bridge.entry_id)
-    assert len(entries) == 16
+    assert len(entries) == 17
     assert all(entry.platform == "hyundai_bridge" for entry in entries)
     assert len({entry.device_id for entry in entries}) == 1
     vehicle = dr.async_get(hass).async_get_device_by_identifier(
@@ -110,7 +110,7 @@ async def test_manifest_capabilities_control_entities_and_identity(
     manifest["vehicles"].append(added)
     await announce(hass, manifest)
     entries = er.async_entries_for_config_entry(registry, bridge.entry_id)
-    assert len(entries) == 18
+    assert len(entries) == 19
     assert {e.domain for e in entries if e.unique_id.startswith(added["vin"])} == {
         "sensor",
         "button",
@@ -314,4 +314,74 @@ async def test_driving_measurements_are_native_read_only_nullable_entities(
     assert not bridge.runtime_data.vehicles["example-ev"].commands
     await send(hass, "state", {**vehicle_state, **dict.fromkeys(fields)})
     for entity_id in entity_ids.values():
+        assert hass.states.get(entity_id).state == "unknown"
+
+
+async def test_remote_climate_and_fan_level_without_remote_commands(
+    hass, bridge, manifest, vehicle_state
+):
+    caps = manifest["vehicles"][0]["capabilities"]
+    caps["stateFields"] = [
+        "isClimateOn",
+        "isCabinFanOn",
+        "cabinFanSpeedLevel",
+        "targetTemperatureCelsius",
+    ]
+    caps["commands"] = []
+    caps["climate"] = None
+    await announce(hass, manifest)
+    registry = er.async_get(hass)
+    ids = {
+        field: registry.async_get_entity_id(
+            domain, "hyundai_bridge", "KMH00000000000001_" + field
+        )
+        for field, domain in [
+            ("isClimateOn", "binary_sensor"),
+            ("cabinFanSpeedLevel", "sensor"),
+            ("targetTemperatureCelsius", "sensor"),
+        ]
+    }
+    await send(
+        hass,
+        "state",
+        {
+            **vehicle_state,
+            "isClimateOn": True,
+            "isCabinFanOn": True,
+            "cabinFanSpeedLevel": 5,
+            "targetTemperatureCelsius": 24,
+        },
+    )
+    assert hass.states.get(ids["isClimateOn"]).state == "on"
+    assert hass.states.get(ids["isClimateOn"]).attributes["device_class"] == "running"
+    fan = hass.states.get(ids["cabinFanSpeedLevel"])
+    assert fan.state == "5"
+    assert "unit_of_measurement" not in fan.attributes
+    assert hass.states.get(ids["targetTemperatureCelsius"]).state == "24"
+    assert not bridge.runtime_data.vehicles["example-ev"].commands
+    await send(
+        hass,
+        "state",
+        {
+            **vehicle_state,
+            "isClimateOn": False,
+            "isCabinFanOn": False,
+            "cabinFanSpeedLevel": 0,
+            "targetTemperatureCelsius": None,
+        },
+    )
+    assert hass.states.get(ids["isClimateOn"]).state == "off"
+    assert hass.states.get(ids["cabinFanSpeedLevel"]).state == "0"
+    assert hass.states.get(ids["targetTemperatureCelsius"]).state == "unknown"
+    await send(
+        hass,
+        "state",
+        {
+            **vehicle_state,
+            "isClimateOn": None,
+            "cabinFanSpeedLevel": None,
+            "targetTemperatureCelsius": None,
+        },
+    )
+    for entity_id in ids.values():
         assert hass.states.get(entity_id).state == "unknown"

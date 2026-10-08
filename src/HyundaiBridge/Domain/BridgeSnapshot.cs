@@ -26,6 +26,7 @@ internal sealed record VehicleState
     public double? RearRightTirePressureBar { get; init; }
     public bool? IsTirePressureLow { get; init; }
     public bool? IsCabinFanOn { get; init; }
+    public int? CabinFanSpeedLevel { get; init; }
     public double? BatteryMinTemperatureCelsius { get; init; }
     public double? BatteryMaxTemperatureCelsius { get; init; }
     public double? BatteryEnergyKwh { get; init; }

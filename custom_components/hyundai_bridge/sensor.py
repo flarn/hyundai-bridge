@@ -22,6 +22,12 @@ from .entity import BridgeEntity, setup_entities
 
 DESCRIPTIONS = (
     SensorEntityDescription(
+        key="cabinFanSpeedLevel",
+        translation_key="cabin_fan_speed_level",
+        icon="mdi:fan",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
         key="frontLeftTirePressureBar",
         translation_key="front_left_tire_pressure",
         device_class=SensorDeviceClass.PRESSURE,

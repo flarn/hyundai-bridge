@@ -76,6 +76,9 @@
       },
       "battery_energy": {
         "name": "Remaining battery energy"
+      },
+      "cabin_fan_speed_level": {
+        "name": "Cabin fan speed level"
       }
     },
     "binary_sensor": {
@@ -126,6 +129,9 @@
       },
       "rear_right_window": {
         "name": "Rear right window"
+      },
+      "remote_climate": {
+        "name": "Remote climate"
       }
     },
     "number": {

@@ -193,6 +193,10 @@ def parse_state(payload: str | bytes, vehicle: VehicleInfo) -> dict[str, Any]:
             type(data[field]) is not int or not 0 <= data[field] <= 100
         ):
             raise ValueError("Invalid percentage state")
+    if data.get("cabinFanSpeedLevel") is not None and (
+        type(data["cabinFanSpeedLevel"]) is not int or data["cabinFanSpeedLevel"] < 0
+    ):
+        raise ValueError("Invalid fan speed level")
     for field in NUMBER_FIELDS:
         if data.get(field) is not None:
             number(data[field])

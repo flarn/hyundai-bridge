@@ -22,6 +22,8 @@ internal static class VehicleStateParser
         var target = Temperature(At(state, "Cabin.HVAC.Row1.Driver.Temperature"));
         var pressureUnit = Number(At(state, "Chassis.Axle.Tire.PressureUnit"));
         var fanSpeed = Number(At(state, "Cabin.HVAC.Row1.Driver.Blower.SpeedLevel"));
+        int? fanLevel = fanSpeed is >= 0 and <= int.MaxValue && fanSpeed == Math.Truncate(fanSpeed.Value)
+            ? (int)fanSpeed.Value : null;
         var energy = At(state, "Green.BatteryManagement.BatteryRemain");
         var latitude = Number(At(state, "Location.GeoCoord.Latitude"));
         var longitude = Number(At(state, "Location.GeoCoord.Longitude"));
@@ -40,7 +42,8 @@ internal static class VehicleStateParser
             RearLeftTirePressureBar = PressureBar(At(state, "Chassis.Axle.Row2.Left.Tire.Pressure"), pressureUnit),
             RearRightTirePressureBar = PressureBar(At(state, "Chassis.Axle.Row2.Right.Tire.Pressure"), pressureUnit),
             IsTirePressureLow = Bool(At(state, "Chassis.Axle.Tire.PressureLow")),
-            IsCabinFanOn = fanSpeed >= 0 && fanSpeed == Math.Truncate(fanSpeed.Value) ? fanSpeed > 0 : null,
+            IsCabinFanOn = fanLevel is { } level ? level > 0 : null,
+            CabinFanSpeedLevel = fanLevel,
             BatteryMinTemperatureCelsius = Number(At(state, "Green.BatteryManagement.Temperature.Min.Raw")),
             BatteryMaxTemperatureCelsius = Number(At(state, "Green.BatteryManagement.Temperature.Max.Raw")),
             // Reported remaining energy, not a claim of usable energy or battery health.
@@ -66,6 +69,8 @@ internal static class VehicleStateParser
             AcChargeLimitPercent = Percent(At(state, "Green.ChargingInformation.TargetSoC.Standard")),
             DcChargeLimitPercent = Percent(At(state, "Green.ChargingInformation.TargetSoC.Quick")),
             TargetTemperatureCelsius = target,
+            // Observed EU remote-climate codes: 0 off, 1 on. Other codes remain unknown.
+            IsClimateOn = Bool(At(state, "Green.Electric.Climate.RemoteClimateDetails")),
             // A set temperature does not establish measured cabin temperature or HVAC action.
             IsDefrostOn = Number(At(state, "Body.Windshield.Front.Defog.State")) switch { 0 or 2 => false, 1 => true, _ => null },
             OutsideTemperatureCelsius = Temperature(At(state, "Cabin.HVAC.OutsideTemperature")),

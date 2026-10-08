@@ -10,6 +10,12 @@ from .entity import BridgeEntity, setup_entities
 
 DESCRIPTIONS = (
     BinarySensorEntityDescription(
+        key="isClimateOn",
+        translation_key="remote_climate",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        icon="mdi:hvac",
+    ),
+    BinarySensorEntityDescription(
         key="isTirePressureLow",
         translation_key="tire_pressure_low",
         device_class=BinarySensorDeviceClass.PROBLEM,

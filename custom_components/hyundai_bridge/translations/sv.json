@@ -76,6 +76,9 @@
       },
       "battery_energy": {
         "name": "Kvarvarande batterienergi"
+      },
+      "cabin_fan_speed_level": {
+        "name": "Fläkthastighet"
       }
     },
     "binary_sensor": {
@@ -126,6 +129,9 @@
       },
       "rear_right_window": {
         "name": "Sidoruta höger bak"
+      },
+      "remote_climate": {
+        "name": "Fjärrklimat"
       }
     },
     "number": {

@@ -33,6 +33,8 @@ Additional optional fields are `isChargePortOpen` and `isSunroofOpen` (true open
 
 Further optional driving fields: `frontLeftTirePressureBar`, `frontRightTirePressureBar`, `rearLeftTirePressureBar`, `rearRightTirePressureBar` (nonnegative pressure in bar), `isTirePressureLow` (vehicle-reported aggregate warning), `isCabinFanOn` (blower activity, not remote HVAC or heating/cooling action), `batteryMinTemperatureCelsius`, `batteryMaxTemperatureCelsius`, `batteryEnergyKwh` (nonnegative vehicle-reported remaining energy, not usable capacity or state of health), and `isFrontLeftWindowOpen`, `isFrontRightWindowOpen`, `isRearLeftWindowOpen`, `isRearRightWindowOpen` (opening booleans). All remain nullable and require advertised capabilities. HA also exposes existing `targetTemperatureCelsius` as a read-only temperature sensor, separate from measured cabin temperature and command support.
 
+`cabinFanSpeedLevel` is an optional nonnegative integer blower level. It is not RPM or percent and has no invented maximum. `isClimateOn` reports observed remote climate activation independently of blower activity; a fan running during ordinary driving does not establish remote climate activation. HA exposes this field as a read-only remote-climate binary sensor, while writable climate entities still require command capabilities and supported bounds.
+
 ## Commands
 
 Each command carries a new UUID `commandId`. No optimistic state updates are performed.

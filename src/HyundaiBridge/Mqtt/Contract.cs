@@ -101,6 +101,7 @@ internal static partial class Contract
         foreach (var measurement in new[] { state.ChargingPowerKw, state.RemainingChargeTimeMinutes, state.BatteryEnergyKwh,
             state.FrontLeftTirePressureBar, state.FrontRightTirePressureBar, state.RearLeftTirePressureBar, state.RearRightTirePressureBar })
             if (measurement < 0) throw new FormatException("Invalid normalized nonnegative measurement");
+        if (state.CabinFanSpeedLevel < 0) throw new FormatException("Invalid normalized fan level");
         // Serialization refuses NaN/infinity; do it before replacing cache data.
         _ = Serialize(state);
     }
