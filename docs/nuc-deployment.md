@@ -238,7 +238,7 @@ credentials, port mapping and persistent volume, then redeploy only this project
 Copy the repository's `compose.yaml` into the stack directory. Create an owner-only `.env` (0600) with the existing MQTT broker connection and Hyundai credentials, following `.env.example`. Set:
 
 ```text
-HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:fed15332e21e9a609d027cc2b9af9e3f0f9c0a61c7cc506eede12ac9b6fefb8a
+HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:b9065c3c9cb54b8818ae534cc11ba39d19266106a597c63db33fd91124cd7c71
 BRIDGE_ID=home
 ```
 
@@ -327,3 +327,30 @@ Credentials, persistent volume, host port and security settings were preserved.
 No wake/control call or extra status endpoint was added. The temporary observer
 was removed and transfer server stopped. Rollback restores the previous
 `9c56d106…` image digest and redeploys only this project with its existing volume.
+
+## Remote climate status and fan level deployment — 2026-10-08
+
+Source commit `31e720f`, image `registry.local/hyundai-bridge:20261008-hvac-status`,
+pinned to `sha256:b9065c3c9cb54b8818ae534cc11ba39d19266106a597c63db33fd91124cd7c71`.
+Only the existing Hyundai Arcane project's image was changed. Container
+`6c0ab5938997ffa8e0081a76403e54f3fd2010c76f47e3eb6b50164a9075c017` started at
+09:15:21 UTC. One vehicle, API reachable, MQTT connected and zero request failures;
+the stored session was reused without login or renewal. Discovery is finished,
+and the next cached state read is 09:25:22 UTC, ten minutes after retrieval.
+
+A temporary MQTT-only observer verified retained state and manifest with the new
+`isClimateOn` and `cabinFanSpeedLevel` fields. The latest cached observation reports
+remote climate false, fan level 4, fan activity true and target temperature 21 °C.
+These remain independent: fan activity is not proof of remote climate activation.
+The earlier user-started remote climate observation showed true, level 5 and
+24 °C; see the status research note. Command capabilities remain empty, with no
+wake or vehicle-control call. The observer was removed and transfer server stopped.
+
+Validation: 112 .NET tests passed (three optional broker/HA checks skipped),
+84 HA tests passed (two optional broker checks skipped), lint and diff checks
+passed. HA component version 0.5.0 adds a native read-only remote-climate binary
+sensor and unitless fan-level sensor. The target-temperature sensor already exists.
+Production HA was not upgraded or inspected; update through HACS and restart HA.
+
+Credentials, persistent volume, port binding and security settings were preserved.
+Rollback restores the preceding `fed15332…` digest and redeploys this project.
