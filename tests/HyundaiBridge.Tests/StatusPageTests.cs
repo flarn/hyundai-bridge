@@ -77,6 +77,9 @@ public sealed class StatusPageTests
             new HttpRequestException("https://upstream.invalid/?token=secret-token")));
         using var client = fixture.Client();
         await Assert.ThrowsAsync<HyundaiBridge.Hyundai.HyundaiException>(() => client.GetVehiclesAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<HyundaiBridge.Hyundai.HyundaiException>(() => client.GetVehiclesAsync(CancellationToken.None));
+        Assert.Equal(1, fixture.Http.RequestCount);
+        fixture.Clock.Now += TimeSpan.FromMinutes(10);
         await Assert.ThrowsAsync<HttpRequestException>(() => client.GetVehiclesAsync(CancellationToken.None));
         var stats = client.Statistics.Snapshot(false);
         Assert.Equal(2, stats.RequestCount);

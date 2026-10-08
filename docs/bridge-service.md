@@ -4,9 +4,16 @@ The service owns Hyundai credentials and publishes the [MQTT v1 contract](mqtt-v
 
 ## Current adapter boundary
 
-The production Hyundai adapter supports EU authentication, session renewal and vehicle discovery. Discovered vehicles advertise **empty state and command capabilities** until their actual data and operations are implemented and verified. An account with no linked vehicles produces an empty manifest; HA can discover the bridge but cannot create vehicle entities yet.
+The production Hyundai adapter supports EU authentication, discovery and ten-minute
+cached state reads. This release adds explicit forced refresh and PIN-authenticated
+climate start/stop (including defrost) and charging start/stop for supported CCS2
+vehicles. Lock/unlock and charge-limit writes remain disabled. Hyundai-specific
+commands and PIN handling stay inside the adapter; HA uses the existing normalized
+v1 command contract and native climate/button entities.
 
-Normalized state publication and command execution are verified using synthetic adapters **inside the test assembly only**. There is no production demo mode or fake command success. GSPA state retrieval, forced vehicle refresh and physical remote commands remain vehicle-dependent work. The service currently polls discovery, not vehicle status.
+Command code is tested with scripted HTTP responses and native HA service calls.
+Actual vehicle command acceptance/results still require live verification; do not
+confuse those tests or capability advertisement with physical acceptance.
 
 ## Configuration and running
 
@@ -15,6 +22,7 @@ Requires .NET 11 RC1 (SDK `11.0.100-rc.1.26425.128`, pinned in `global.json`) on
 | Variable | Required / default |
 |---|---|
 | `HYUNDAI_USERNAME`, `HYUNDAI_PASSWORD` | EU MyHyundai credentials |
+| `HYUNDAI_PIN` | Optional MyHyundai remote-control PIN; without it, only explicit refresh is enabled |
 | `HYUNDAI_REGION` | `EU` only; defaults to `EU` |
 | `HYUNDAI_SESSION_DIRECTORY` | Absolute private data directory; `/data` in Docker |
 | `BRIDGE_ID` | `home`; ASCII letters, digits, `_` or `-`; unique on the broker |
@@ -55,8 +63,11 @@ The data volume contains confidential session tokens, the command journal and a 
 * Controls are non-retained, UUID-correlated JSON. Reject malformed/oversized payloads, unknown actions and unsupported values. MQTT 5 `Retain As Published` identifies and rejects live retained controls as well as retained replay. The bounded ingress queue holds 64 commands; controls dropped on overload/disconnection have an unknown outcome to HA, without automatic resend.
 * Serialize backend operations, including polling, through one gate. The **90-second** command budget includes queue and gate waiting. Expired queued controls do not execute; queued controls from a lost MQTT connection are discarded. No physical control is automatically retried.
 * Save an execution marker atomically before invoking the adapter. UUID redelivery replays the saved result; reusing an ID for another request fails. Persist the latest 2048 terminal command IDs and all in-progress markers. Clients must always generate fresh IDs; replay outside that bounded history is not guaranteed to deduplicate.
-* Persist a **10-minute per-vehicle forced-refresh cooldown**, including failed attempts, before dispatch. This is ready for the real refresh adapter; it does not make refresh supported today.
+* Persist a **10-minute per-vehicle forced-refresh cooldown**, including failed attempts, before dispatch. Refresh sends one prewakeup request, then waits for an advanced vehicle timestamp; unchanged cached data never completes refresh.
 * Publish `accepted` only when the adapter reports actual upstream acceptance. Publish `completed` only after the adapter confirms completion. Update state only with an actual normalized observation. Timeout/restart during execution reports `failed` with an explicit unknown outcome. A non-cooperative timed-out operation retains the backend gate until it ends, preventing overlapping requests.
+
+* The adapter polls a submitted command result at five-second intervals, at most twelve times within the existing 90-second total budget. PIN control tokens are reused until expiry in memory. A rejected PIN blocks further PIN submissions until configuration is checked and the bridge restarted; PIN is never automatically retried. HTTP 429 pauses account requests for at least ten minutes or a longer `Retry-After`.
+* Climate uses a conservative EU range of 17–27 °C in 0.5 °C steps. These upstream-derived limits still require confirmation for each vehicle. Defrost is the native climate `defrost` preset; changing it sends a climate-start request. Neither target temperature nor fan activity is invented as measured cabin temperature or heating/cooling action.
 
 Broker ACLs should restrict bridge manifests/state publication and command publication to the appropriate bridge/HA clients. Vehicle topic IDs must be globally unique on a broker, as specified by the contract.
 

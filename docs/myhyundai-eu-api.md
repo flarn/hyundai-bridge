@@ -59,3 +59,25 @@ Proposed bridge defaults for phase 3/7: cached reads every ten minutes, no autom
 ## Verification boundary
 
 Live verification on 2026-10-06: the supplied Swedish/EU account authenticated through CCI. A second process reused the persisted session without login. CCI token renewal also succeeded after the local cache expiry was deliberately advanced for a controlled test; this was not a naturally expired-token observation. Both discovery runs and the renewal run returned zero available vehicles. VIN/model, GSPA state, model capabilities and commands remain unverified. All subsequent phases require recorded evidence; synthetic tests must never be presented as physical/API acceptance.
+
+## Requested command adapter — 2026-10-08
+
+Current upstream `GspaApiEU.py` was re-inspected before implementation. The enabled
+operations are only prewakeup, climate start/stop with optional front defrost, and
+charging start/stop. Control requests use `command=start|stop`; climate includes
+`hvacTemp` as a decimal string, `tempUnit=C`, `hvacTempType=1`, and
+`windshieldFrontDefogState` as a boolean. Omitting temperature type/unit can cause
+the backend to ignore the requested temperature in upstream live reports.
+
+CCI `v1/auth/pin` returns `isMatched` plus `controlTokenInfo.controlToken` and a
+relative `expiresTime` in seconds. PIN-gated requests carry this token in both
+Authorization and AuthorizationCCSP; prewakeup and result reads use CCS bearer
+authentication. Result polling is vehicle/path scoped; require an accepted SID
+and reject a mismatched SID if the result contains one. Serialize all operations
+locally, although another app can still issue a command against the same car.
+
+The adapter does not replay controls after 401 or ambiguous failures. A rejected
+PIN is not resubmitted during this process lifetime. Short-lived control tokens
+stay in memory; the existing confidential CCI session survives restarts. Fresh
+status completes only when the actual vehicle timestamp advances. None of this
+release's scripted HTTP tests establishes live vehicle-command acceptance.

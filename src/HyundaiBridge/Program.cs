@@ -20,13 +20,14 @@ if (args.Length > 1 || (args.Length == 1 && args[0] is not ("--discover" or "--s
     logger.LogError("Usage: HyundaiBridge [--serve|--discover]");
     return 2;
 }
-string? username, password;
+string? username, password, pin;
 BridgeOptions? bridgeOptions = null;
 var discovery = args.Length == 1 && args[0] == "--discover";
 try
 {
     username = BridgeOptions.Secret("HYUNDAI_USERNAME");
     password = BridgeOptions.Secret("HYUNDAI_PASSWORD");
+    pin = BridgeOptions.Secret("HYUNDAI_PIN");
     if (!discovery) bridgeOptions = BridgeOptions.FromEnvironment();
 }
 catch (Exception error) when (error is FormatException or IOException or UnauthorizedAccessException)
@@ -51,7 +52,7 @@ using var handler = new HttpClientHandler
 };
 using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(35) };
 using var client = new HyundaiClient(http, new SessionStore(directory), username, password,
-    logs.CreateLogger<HyundaiClient>(), TimeProvider.System);
+    logs.CreateLogger<HyundaiClient>(), TimeProvider.System, pin);
 try
 {
     if (!discovery)
@@ -69,7 +70,7 @@ try
         var journal = new CommandJournal(directory);
         await journal.LoadAsync(stopping.Token);
         using var backendGate = new SemaphoreSlim(1, 1);
-        var processor = new CommandProcessor(journal, TimeProvider.System, backendGate, logs.CreateLogger<CommandProcessor>());
+        var processor = new CommandProcessor(journal, TimeProvider.System, backendGate, logs.CreateLogger<CommandProcessor>(), client.ExecuteCommandAsync);
         using var mqtt = new MqttBridge(bridgeOptions!, processor, logs.CreateLogger<MqttBridge>(), TimeProvider.System);
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [] });
         if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))

@@ -336,7 +336,7 @@ internal sealed class Fixture : IDisposable
         Store = new SessionStore(Directory);
         transport = new HttpClient(Http);
     }
-    internal HyundaiClient Client() => new(transport, Store, "test@example.invalid", "test-password", Log, Clock);
+    internal HyundaiClient Client(string? pin = null) => new(transport, Store, "test@example.invalid", "test-password", Log, Clock, pin);
     internal HyundaiSession Session(DateTimeOffset? expires = null)
     {
         using var document = JsonDocument.Parse(AuthenticationTests.Tokens);

@@ -22,7 +22,7 @@ HACS installs only `custom_components/hyundai_bridge`; the .NET bridge remains a
 
 For manual installation, copy `custom_components/hyundai_bridge` into your HA configuration's `custom_components` directory and restart. Each vehicle gets one Hyundai device with native entities according to its advertised capabilities. No MQTT entities or MQTT entity discovery payloads are used.
 
-See [installation and tests](docs/home-assistant.md) and the [MQTT v1 contract](docs/mqtt-v1.md). The integration was tested with HA 2026.9.4. Current real state includes battery, 12-V battery, range, odometer, charging, plugged-in, eight opening states, charging power/time, vehicle observation time, tire pressures/warning, remote climate state, climate target/fan activity/level, battery temperatures/energy and side-window openings. Writable entities require verified command capabilities; Hyundai remote commands are not yet implemented or advertised.
+See [installation and tests](docs/home-assistant.md) and the [MQTT v1 contract](docs/mqtt-v1.md). The integration was tested with HA 2026.9.4. Current real state includes battery, 12-V battery, range, odometer, charging, plugged-in, eight opening states, charging power/time, vehicle observation time, tire pressures/warning, remote climate state, climate target/fan activity/level, battery temperatures/energy and side-window openings. Requested remote climate/defrost, charging and explicit refresh controls are implemented behind normalized capabilities; live vehicle verification is tracked separately.
 
 ```sh
 python3.14 -m venv .venv
@@ -62,3 +62,9 @@ Successful CCI token sets are reused and refreshed with a two-minute expiry marg
 Session tokens are confidential. On macOS/Linux, the dedicated session directory is restricted to its owner (0700) and its atomically replaced token file is 0600. Passwords are never persisted. Tokens are plaintext on disk: use an owner-only directory on an encrypted disk/volume, exclude it from shared backups and protect any future Docker volume equally. File permissions are not encryption. This phase supports macOS/Linux, not Windows secret storage. Run one process per session directory.
 
 Accept any pending account terms through the official MyHyundai app/browser before retrying. An authentication failure is not automatically evidence of a bad password: consent, WAF blocking or a changed Hyundai flow can also be responsible.
+
+Remote controls: configure `HYUNDAI_PIN` in the bridge for climate start/stop with
+defrost and EV/PHEV charging start/stop. Explicit vehicle refresh is available
+without PIN, subject to a ten-minute cooldown. Commands use the existing native
+HA climate/buttons and require observed completion; live verification is recorded
+separately from tests in the deployment notes.

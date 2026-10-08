@@ -83,3 +83,19 @@ docker stop hyundai-ha-test-broker
 The smoke test publishes retained state before HA starts, disconnects its publisher, discovers/configures the custom integration through MQTT, verifies native battery state, reloads the integration/MQTT connection and checks offline/online transitions. It uses real paho/Mosquitto transport. No messages are sent to a real vehicle and no production HA deployment is included.
 
 The additional pipeline test starts the real .NET MQTT publisher with a synthetic test adapter, consumes its retained documents in HA and calls the native unlock service. It verifies pending acceptance, confirmed completion and the subsequent observed lock state through actual Mosquitto transport. No Hyundai requests or credentials are used.
+
+## Remote controls in 0.6.0
+
+The bridge enables only the requested controls: climate start/stop, its `defrost`
+preset, charging start/stop buttons, and an explicit refresh button. The vehicle
+climate entity uses the existing observed target temperature and remote-climate
+state; no real-time HVAC action is asserted. Choosing a temperature or defrost
+preset sends a remote climate-start request. A missing observed target can be
+set explicitly through HA's climate temperature action.
+
+Configure MyHyundai PIN in the bridge as `HYUNDAI_PIN` (or its `_FILE` alternative),
+never in HA. Without PIN, only the refresh button is advertised for supported
+CCS2 vehicles. Charging controls require discovery to identify an EV/PHEV.
+Capability advertisement is not live command verification. HA waits for correlated
+completion and reports failures/timeouts without resending or optimistic state.
+Update HACS to 0.6.0 and restart HA to load this release.
