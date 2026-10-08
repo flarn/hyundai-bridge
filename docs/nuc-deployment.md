@@ -391,3 +391,24 @@ production HA was not inspected or updated in this deployment.
 Rollback: restore the preceding `b9065c3c…` image digest and redeploy only this
 project, preserving the volume. The optional PIN mapping is harmless to that
 version. Keep the PIN and other credentials outside Git and diagnostic output.
+
+## PIN activation — 2026-10-08
+
+The user saved `HYUNDAI_PIN` in Arcane. Its presence and Compose mapping were
+verified without exposing the value, then only the Hyundai project was redeployed
+with the same `ab019dd8…` image digest. Container
+`a32779b3bb962af8ee960948bd8e4a7a92699c08d867257fff9b357d2e6275c6` started at
+11:23:22 UTC. API reachable, MQTT connected, one vehicle and zero request failures;
+the stored session was reused with no login or renewal. Startup discovery is
+finished and the next cached state read is 11:33:23 UTC.
+
+A read-only MQTT observer verified the retained manifest now advertises `refresh`,
+`climate/start`, `climate/stop`, `charging/start` and `charging/stop`. Climate
+metadata advertises 17–27 °C, a 0.5 °C step and defrost support. Retained state
+and availability were also received. The observer was removed and its temporary
+transfer server stopped.
+
+This verifies configuration and command advertisement, not acceptance of the
+PIN by Hyundai. No physical control or wake request was sent. Live PIN
+authentication and command completion remain unverified; production HA was not
+inspected or updated during this activation.
