@@ -238,7 +238,7 @@ credentials, port mapping and persistent volume, then redeploy only this project
 Copy the repository's `compose.yaml` into the stack directory. Create an owner-only `.env` (0600) with the existing MQTT broker connection and Hyundai credentials, following `.env.example`. Set:
 
 ```text
-HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:b9065c3c9cb54b8818ae534cc11ba39d19266106a597c63db33fd91124cd7c71
+HYUNDAI_BRIDGE_IMAGE=registry.local/hyundai-bridge@sha256:ab019dd866b68035cdb7b79c17585f4716c4c1b9fa9026f3b2bd762c06ef8395
 BRIDGE_ID=home
 ```
 
@@ -354,3 +354,40 @@ Production HA was not upgraded or inspected; update through HACS and restart HA.
 
 Credentials, persistent volume, port binding and security settings were preserved.
 Rollback restores the preceding `fed15332…` digest and redeploys this project.
+
+## Requested remote command deployment — 2026-10-08
+
+Source `785d646`, image `registry.local/hyundai-bridge:20261008-remote-commands`,
+pinned to `sha256:ab019dd866b68035cdb7b79c17585f4716c4c1b9fa9026f3b2bd762c06ef8395`.
+Container `760e512c2df0735ffc7494134102a1e7bcad453a7cdd320ad8c04629ff317279`
+started at 11:17:09 UTC. One vehicle, API reachable, connected MQTT, zero request
+failures and the stored session reused without login/renewal. The next ordinary
+cached read is 11:27:09 UTC; startup discovery is finished. Only this project's
+image and PIN environment mapping changed; credentials, storage, port binding
+and security options were preserved.
+
+At the user's request, an empty `HYUNDAI_PIN` variable and its Compose mapping
+were added in Arcane. The PIN value is not known or configured. Therefore the
+production manifest currently advertises only the explicit `refresh` command.
+PIN-authenticated climate start/stop, defrost preset and charging start/stop
+are implemented but remain disabled until the user fills in the PIN and redeploys.
+Lock/unlock and charge-limit writes remain disabled.
+
+A read-only temporary observer verified retained production state/manifest and
+availability. No physical command or wake was sent during this deployment; this
+is not a live command acceptance test. The observer was removed and its transfer
+server stopped. Live PIN authentication and command result verification remain
+pending, and charging needs a connected charger for a meaningful acceptance test.
+
+Validation: 128 .NET tests passed plus three added capability cases passed after
+the final metadata change; three optional broker/HA companion tests were skipped.
+84 native HA tests passed with two optional broker tests skipped; lint and diff
+checks passed. Tests cover requested HTTP bodies/headers, acceptance versus
+completion, failures/unknown results, advanced refresh timestamps, PIN rejection
+and reuse, cancellation, rate-limit cooldown and exclusion of unrequested controls.
+HA version 0.6.0 is published. Its climate/button command paths already existed;
+production HA was not inspected or updated in this deployment.
+
+Rollback: restore the preceding `b9065c3c…` image digest and redeploy only this
+project, preserving the volume. The optional PIN mapping is harmless to that
+version. Keep the PIN and other credentials outside Git and diagnostic output.
